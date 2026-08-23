@@ -133,6 +133,28 @@ platform effect on cells run on both.
    is the GPU. The bootstrap now imports `modeling_gpt_neox` and asserts the torch
    version before it does any work, so trap 2 cannot recur silently.
 
+**A rented pod bills whether or not it is working, and nothing tells you.** The GPU
+sat at 0% for **39 minutes** on 23 Aug 2026 (last cell finished 21:29 UTC, noticed at
+22:08, ~$0.90) because the tail of the queue had drained and a follow-up job had
+crashed. Polling by hand catches this late, every time. The fix is an idle detector
+that runs for the life of the rental:
+
+    pgrep -u root -c -f 'venv/bin/python [e]xperiments/'   # count real jobs
+    nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits
+
+Alert when the count is 0 and utilization is under 5%, and again every 15 minutes
+while it stays that way. Two details matter. The **bracket** in `[e]xperiments`
+stops the pattern matching the shell that is running the check, which is the same
+self-match trap as `pkill -f` and which produced a completely wrong reading of what
+was running earlier the same day. And **count processes by interpreter path**, not by
+script name: wrapper scripts whose text mentions the driver match a naive pattern and
+look like running jobs.
+
+Corollary worth designing for: the tail of a campaign is where idleness happens,
+because grids drain to one long cell while the rest of the card goes unused. Either
+overlap the tail with the next piece of work or plan to delete the pod at the point
+where only one cell remains.
+
 **The trap that actually costs money: BLAS thread oversubscription.** The first
 4-worker launch sat with the **GPU at 0% for five minutes** while every worker burned
 800% CPU. The host has 256 cores, so each process gave its float64 `eigh` (the
