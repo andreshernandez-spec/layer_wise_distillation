@@ -669,3 +669,24 @@ whatever happens early, the arms that matter are worse by 1e7.
 **Recommendation**: keep `contract: zca` everywhere. Marginal Gaussianization stays in
 the codebase as a tested, working option (`Contract`, `MarginalGaussianize`) with this
 measurement next to it.
+
+## The anchor-budget crossover (23 Aug 2026, Q = 1e8)
+
+| anchor seqs | real positions | R eps | mix eps | R stitch | mix stitch | noise is worth |
+|---|---|---|---|---|---|---|
+| 46 | 94k | 1.061 | **0.600** | 2.188 | **1.415** | +0.77 nats |
+| 92 | 188k | 0.723 | **0.530** | 1.118 | **0.976** | +0.14 nats |
+| 184 | 377k | *running* | | | | |
+| 464 | 0.95M | **0.412** | 0.463 | 0.450 | 0.527 | -0.08 nats (tied) |
+
+The benefit decays monotonically with the anchor budget and is gone somewhere between
+**188k and 950k positions per interface**; the 184-sequence cell is pinning it. Read
+the two metrics with their own error bars (eps seed spread 0.004, stitching 0.106):
+at 0.95M positions noise costs 0.05 on eps, twelve times the eps seed spread and a
+real effect, while on stitching the two are **tied** (0.077 apart, inside the band).
+
+**A correction to the wording used earlier in this document**: the full-anchor cells
+were described as noise being "a liability" on stitching. On stitching they are tied;
+the liability is real on eps and not established on the metric that matters. The
+substantive conclusion is unchanged (noise buys nothing at 0.95M positions) but
+"tied" is the accurate word and the earlier phrasing overstated it.

@@ -93,3 +93,7 @@ Marginal Gaussianization (23 Aug 2026, 12 cells): worse than affine whitening on
 8 readable cells, by 0.33 to 2.33 nats of stitching delta. The source document's
 "normalization is free because phi is a bijection" holds for the optimum and not for
 finite-step training. Default stays `contract: zca`. `docs/02`.
+
+Anchor-budget crossover (23 Aug 2026, Q=1e8, stitching delta): noise is worth +0.77
+nats at 94k anchor positions, +0.14 at 188k, and nothing at 0.95M. The crossover sits
+between 188k and 950k; the 377k cell is running. `docs/02`.
