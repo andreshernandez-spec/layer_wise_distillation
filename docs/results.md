@@ -97,3 +97,9 @@ finite-step training. Default stays `contract: zca`. `docs/02`.
 Anchor-budget crossover (23 Aug 2026, Q=1e8, stitching delta): noise is worth +0.77
 nats at 94k anchor positions, +0.14 at 188k, and nothing at 0.95M. The crossover sits
 between 188k and 950k; the 377k cell is running. `docs/02`.
+
+Settled 23 Aug 2026: (a) the crossover is at ~250k real positions per interface
+(noise worth +0.773 nats at 94k, +0.142 at 188k, -0.045 at 377k, -0.078 at 0.95M);
+(b) eps and end-to-end loss diverge with training length: R at 464 anchors improves
+eps 0.412 to 0.373 from 1e8 to 3e8 while its stitching delta worsens 0.450 to 0.710,
+both seeds. A stage must not be stopped on eps. `docs/02`.

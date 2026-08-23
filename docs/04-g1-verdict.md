@@ -1,7 +1,9 @@
 # G1 verdict
 
-**Status: provisional, 23 Aug 2026.** Three cells still running (a184, R@3e8 seed 1,
-C_mix@3e8 rerun); none can overturn what follows, they sharpen one number each. Every
+**Status: 23 Aug 2026, one cell still running** (the C_mix@3e8 rerun). The other two
+landed and are folded in: the crossover is located at ~250k positions per interface,
+and the eps/stitching divergence is real on both seeds, which is the finding that
+most changes how Phase 2 and 3 must train a stage. Every
 figure traces to `out/phase1-1.4b-a100/` and `out/phase1-1.4b/`, SHAs in each run JSON.
 
 Substrate: Pythia-1.4B, stage 2 (blocks 8-11), 2-block same-width student, 109 cells
@@ -158,7 +160,11 @@ the data is narrower than the source document's and still worth a paper:
   is exactly the regime storage forces at Tier 1 and 2;
 - the interface contract, in its strong form, is not the mechanism: affine whitening
   beats marginal Gaussianization, and moment matching beats every richer noise model
-  tried.
+  tried;
+- **a stage cannot be trained to convergence on its own objective**: past ~1e8
+  positions eps keeps improving while the composed model gets worse, on both seeds.
+  Stage training needs the stitching delta as its stopping signal, and G1's
+  eps-based half should be restated in those terms before Phase 3.
 
 Phase 2 changes are in `docs/03`: chain two stacks rather than one, propagate anchors
 rather than noise for the DAgger ablation, and stop each stage on held-out anchors.

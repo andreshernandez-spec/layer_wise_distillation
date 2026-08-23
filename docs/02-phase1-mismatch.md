@@ -690,3 +690,50 @@ were described as noise being "a liability" on stitching. On stitching they are 
 the liability is real on eps and not established on the metric that matters. The
 substantive conclusion is unchanged (noise buys nothing at 0.95M positions) but
 "tied" is the accurate word and the earlier phrasing overstated it.
+
+## The interface objective and end-to-end loss come apart (23 Aug 2026, settled)
+
+Flagged as an open question earlier in this document; a second seed settles it.
+
+| cell | eps | stitching delta |
+|---|---|---|
+| R, 464 anchors, 1e8 | 0.412 | **0.450** |
+| R, 464 anchors, 3e8, seed 0 | 0.374 | **0.782** |
+| R, 464 anchors, 3e8, seed 1 | 0.372 | **0.638** |
+
+Tripling the training makes the student **better at the thing it is trained on**
+(eps 0.412 to 0.373) and **worse at the thing that matters** (stitching 0.450 to 0.710,
+seed spread 0.144, both seeds worse than the 1e8 cell by more than that spread).
+
+This is the sharpest practical finding of Phase 1. A stage trained to convergence on
+its own interface objective degrades the composed model. Consequences:
+
+1. **eps is not a safe stopping signal**, and neither is training loss. The stage
+   trainer needs the stitching delta, which costs a full-model forward pass over a
+   held-out set. That is affordable per checkpoint (minutes) and it is not optional.
+2. It explains why the recipe arm looked better than it was at 3e7 and why the
+   ordering by eps and by stitching disagree at 1e8 (`docs/02` "Which cells are
+   allowed to carry a conclusion"): the two metrics genuinely diverge once a stage is
+   trained past a point, and only below that point do they agree.
+3. It weakens G1's eps-based half further. The kill criterion should be restated in
+   terms of the stitching delta alone before Phase 3.
+
+A plausible mechanism, untested: the interface MSE is dominated by the
+high-variance directions of the residual stream, and past a point the student buys eps
+by fitting those ever more exactly while drifting on the low-variance directions the
+next stage actually reads. The bridge-oracle machinery (`docs/01` C0.5) already
+measures exactly that decomposition and could test it cheaply.
+
+## The anchor-budget crossover, located
+
+| anchor seqs | real positions | R stitch | mix stitch | noise is worth |
+|---|---|---|---|---|
+| 46 | 94k | 2.188 | 1.415 | **+0.773** |
+| 92 | 188k | 1.118 | 0.976 | **+0.142** |
+| 184 | 377k | 0.667 | 0.711 | -0.045 |
+| 464 | 0.95M | 0.450 | 0.527 | -0.078 |
+
+Monotone, and it crosses zero **between 188k and 377k real positions per interface**,
+call it ~250k. Below that, noise is what makes stagewise training work; above it, noise
+is a small tax. That is the number Tier 1 and Tier 2 planning needs, because it decides
+whether an interface can be served from a stored anchor set or has to recompute.
