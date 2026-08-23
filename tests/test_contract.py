@@ -90,3 +90,38 @@ def test_ar1_structure_has_the_requested_autocorrelation():
     z = ((s.double() - x.mean(0)) @ W).float()
     l = Lag1(6); l.update(z)
     assert (l.finalize()["rho"] - 0.6).abs().max() < 0.05
+
+
+def test_every_grid_arm_builds_and_draws():
+    """Every (measure, structure) pair in the Phase 1 grids must construct a sampler
+    and draw a batch. G_mix failed on the pod because nothing exercised it: C_mix was
+    special-cased in the runner and no other mix arm had ever run."""
+    import yaml
+    from pathlib import Path
+    from lwd.noise.samplers import AnchorMix, ContractGaussianized, Gaussian, Isotropic
+    x = _heavy_tailed(n=4096, d=6)
+    mean = x.mean(0)
+    cov = torch.from_numpy(np.cov(x.numpy().T, bias=True))
+    q = torch.linspace(0, 1, 256, dtype=torch.float64)
+    m = MarginalGaussianize(q, torch.quantile(x, q, dim=0))
+    y = m.forward(x)
+    c = Contract(m, Affine.zca(y.mean(0), torch.from_numpy(np.cov(y.numpy().T, bias=True))))
+    rho = torch.full((6,), 0.4)
+    anchors = x[:512].reshape(16, 32, 6).float()
+    arms = set()
+    for f in Path("experiments/phase1/configs").glob("grid-*.yaml"):
+        arms |= set(yaml.safe_load(open(f))["arms"])
+    assert {"G_mix", "C_mix", "C_ar1", "I_iid"} <= arms, arms
+    g = torch.Generator().manual_seed(0)
+    for arm in sorted(arms):
+        meas, struct = arm.split("_")
+        if meas in ("R", "L"):
+            continue  # real arms take activations, not a noise measure
+        base = {"G": lambda s: Gaussian(mean, cov, s, rho),
+                "I": lambda s: Isotropic(mean, cov, s, rho),
+                "C": lambda s: ContractGaussianized(c, s, rho)}[meas]
+        smp = AnchorMix(anchors, base("iid"), 1 / 4) if struct == "mix" else base(struct)
+        out = smp.sample(4, 32, g)
+        out = out[0] if isinstance(out, tuple) else out
+        assert out.shape == (4, 32, 6), (arm, out.shape)
+        assert torch.isfinite(out).all(), arm

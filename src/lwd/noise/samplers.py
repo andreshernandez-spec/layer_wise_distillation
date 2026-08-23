@@ -24,7 +24,8 @@ def _base(b, L, d, structure: str, rho: torch.Tensor | None, g, device, dtype=to
         for t in range(1, L):
             z[:, t] = r * z[:, t - 1] + s * e[:, t]
         return z
-    raise ValueError(structure)
+    raise ValueError(f"unknown sequence structure {structure!r}; a mix passes 'iid' "
+                     "to its noise component, the mixing is the structure")
 
 
 class Isotropic:

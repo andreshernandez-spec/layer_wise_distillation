@@ -385,3 +385,32 @@ pass belongs to the anchors. If the scarce-anchor cells show no noise benefit ei
 Phase 1's answer is the measurement paper: stagewise training on ~1M recycled real
 positions per interface, with noise as the ablation that does not help, and the
 pure-noise divergence as the mechanism result.
+
+## The campaign moves to a rented A100 (23 Aug 2026)
+
+The laptop queue was stopped mid-grid and everything re-run on one RunPod A100 SXM
+(`docs/compute.md` "The rented A100"): 4.5x faster, and the full 89-cell design
+(`grid-1.4b-full.yaml`) costs about $2.50 against ~14 laptop-hours. Pod cells live in
+`out/phase1-1.4b-a100/` and are never mixed with laptop cells in one table;
+`experiments/phase1/compare_platforms.py` measures what the hardware alone is worth.
+**The platform effect is nil** (23 Aug 2026, 9 cells run on both, same torch
+2.13.0+cu130, different GPUs):
+
+| cell | eps laptop | eps A100 | rel diff |
+|---|---|---|---|
+| R_iid 1e5 / 1e6 / 1e7 | 2.9296 / 1.6213 / 0.5444 | 2.9296 / 1.6213 / 0.5447 | 0.00 / 0.00 / 0.05% |
+| L_iid 1e6 / 1e7 | 1.6164 / 0.5355 | 1.6165 / 0.5355 | 0.00 / 0.01% |
+| C_mix 1e5 / 1e6 / 1e7 | 2.9381 / 1.6394 / 0.6446 | 2.9381 / 1.6394 / 0.6416 | 0.00 / 0.00 / 0.46% |
+| G_iid 1e5 | 2.9409 | 2.9409 | 0.00% |
+
+Median 0.00%, max 0.46%, and the max is the longest run (1e7), where trajectories have
+had the most chance to diverge. Two different GPUs reproduce eps to four decimals, so
+laptop and pod cells **may be read in one table**, with the platform named per cell.
+That was not safe to assume: it is measured, and `compare_platforms.py` re-measures it
+whenever cells are added.
+
+The grid was resized rather than copied. The first passes settled three arms, so
+`C_ar1`, `C_iid` and `I_iid` stop at 1e7 and stay as the ablation record, while
+`L_iid` (the true oracle, missing from the original grid) and `G_mix` (plain Gaussian
+plus anchors: does the contract earn its place inside the mix?) join the four that run
+the full ladder to 1e8 with two seeds.

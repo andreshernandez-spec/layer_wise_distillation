@@ -108,8 +108,13 @@ def main(a):
         free_rows = [i for i in range(len(rows_all)) if i not in used]
         sampler = LiveReal(rows_all, Lower(c["model"], lo, dt, "sdpa", dev), exclude=used | set(free_rows[: c["stitch_seqs"]]))
     elif a.structure == "mix":
-        sampler = AnchorMix(anchor_X, noise[a.measure]() if a.measure != "C" else
-                            ContractGaussianized(phi_in, "iid", rho), c["mix_real_frac"])
+        # inside a mix the noise component is always i.i.d.: the mixing is the
+        # structure. Passing a.structure through here built Gaussian(..., "mix"),
+        # which the sampler does not know (found on the pod, 23 Aug 2026).
+        inner = {"G": lambda: Gaussian(mean, cov, "iid", rho),
+                 "I": lambda: Isotropic(mean, cov, "iid", rho),
+                 "C": lambda: ContractGaussianized(phi_in, "iid", rho)}[a.measure]()
+        sampler = AnchorMix(anchor_X, inner, c["mix_real_frac"])
     else:
         sampler = noise[a.measure]()
 

@@ -58,3 +58,7 @@ Controls at 1e8 (23 Aug 2026): R (same anchors, no noise) eps 0.413 / stitch 0.5
 C_mix (0.464 / 0.52); L recycled 10x over the 1e7 budget 0.353 / 0.41. The fourth-pass
 headline was a step-count artefact; noise adds nothing at ~1M anchors per interface.
 `docs/02` "Controls at Q = 1e8".
+
+Platform check (23 Aug 2026): 9 Phase 1 cells run on both the RTX 3080 Laptop and a
+RunPod A100 SXM, same torch, reproduce eps to a median 0.00% and max 0.46% relative
+difference. Laptop and pod cells can be read in one table.

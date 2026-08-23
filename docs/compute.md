@@ -133,6 +133,19 @@ platform effect on cells run on both.
    is the GPU. The bootstrap now imports `modeling_gpt_neox` and asserts the torch
    version before it does any work, so trap 2 cannot recur silently.
 
+**The trap that actually costs money: BLAS thread oversubscription.** The first
+4-worker launch sat with the **GPU at 0% for five minutes** while every worker burned
+800% CPU. The host has 256 cores, so each process gave its float64 `eigh` (the
+contract setup does three, on 2048x2048 covariances) 256 threads: 1024 threads over
+256 cores. Capping `OMP_NUM_THREADS=8` per worker (`run_sweep.sh` exports it, with
+`MKL`/`OPENBLAS`/`NUMEXPR` to match) took one small cell from "still going after five
+minutes" to **14.6 s**, against 43 s for the same cell on the laptop. A rented box
+with many cores is not a laptop with a few, and the default is wrong there.
+
+The lesson generalizes: **probe one cell before launching the fleet.** A single
+timing cell costs seconds and would have caught this before four workers spent ten
+minutes achieving nothing.
+
 Also: `git` refuses a rsync'd repo owned by another uid
 (`detected dubious ownership`); `git config --global --add safe.directory /root/lwd`
 on the pod, or runs record an empty SHA.
