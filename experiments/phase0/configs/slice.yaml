@@ -1,0 +1,30 @@
+# Pre-declared real-token slice (docs/01 C0.1). Declared 22 Aug 2026, before any
+# harvest ran. Do not move it after looking at results.
+#
+# Source: EleutherAI/pile-standard-pythia-preshuffled, the exact token stream the
+# standard Pythia models trained on, as flat uint16 rows of 2049 tokens
+# (2048 + next-token). Row r belongs to training step r // 1024.
+# The bins are 20 x 30 GB; rows are fetched by HTTP range, never downloaded whole.
+source:
+  repo: EleutherAI/pile-standard-pythia-preshuffled
+  row_tokens: 2049
+  rows_per_step: 1024
+  bin_bytes: 30000000000
+  bin_pattern: document-{i:05d}-of-00020.bin
+# Anchor/heal slice: 5 consecutive Pythia steps, 5120 rows, 10.49M tokens.
+# Step 100000 is arbitrary and was picked before any data was seen.
+anchor:
+  first_step: 100000
+  num_steps: 5
+# Held-out text: the Pile test split, never in any Pythia training run.
+heldout:
+  repo: monology/pile-uncopyrighted
+  file: test.jsonl.zst
+  num_tokens: 2000000
+# Corpus-swap control: same token count from a different corpus. Declared here,
+# fetched in Phase 3.
+swap:
+  repo: HuggingFaceFW/fineweb-edu
+  config: sample-10BT
+  num_tokens: 10490880
+tokenizer: EleutherAI/pythia-70m

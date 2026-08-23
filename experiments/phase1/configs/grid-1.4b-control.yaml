@@ -1,0 +1,7 @@
+# The control for the 1e8 headline: the same anchors with no noise (R), and the
+# live-real arm recycled 10x over the 1e7 budget (L), both at 1e8 positions.
+arms: [R_iid, L_iid]
+q:      []
+q_real: [1.0e8]
+seeds: [0]
+multi_seed_below: 0

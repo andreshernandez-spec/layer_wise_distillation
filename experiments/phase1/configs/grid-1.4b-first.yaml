@@ -1,0 +1,7 @@
+# First pass (docs/02): every must-exist arm at two small Q, one seed, for a first
+# read of the ordering and the per-cell cost before the full grid-1.4b.yaml runs.
+arms: [R_iid, G_iid, I_iid, C_iid, C_ar1, C_mix]
+q:      [1.0e5, 1.0e6]
+q_real: [1.0e5, 1.0e6]
+seeds: [0]
+multi_seed_below: 0

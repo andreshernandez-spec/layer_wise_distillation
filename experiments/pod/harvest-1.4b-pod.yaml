@@ -1,0 +1,18 @@
+# Pod harvest: all statistics, anchor refs for the Phase 1 stage only (interfaces
+# 2 and 3), no top-k store. ~8 GB instead of 33 GB.
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+mode: resident
+attn: sdpa
+dtype: float16
+device: cuda
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+batch: 8
+seq_len: 2048
+anchor_seqs: 512
+ref_ifaces: [2, 3]
+skip_topk: true
+topk: 64
+seed: 0
+out: out/harvest-1.4b

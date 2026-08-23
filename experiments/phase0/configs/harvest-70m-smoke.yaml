@@ -1,0 +1,15 @@
+model: EleutherAI/pythia-70m
+n_stages: 3
+mode: resident
+attn: sdpa
+dtype: float32
+device: cpu
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+max_rows: 16
+batch: 4
+seq_len: 256
+anchor_seqs: 4
+topk: 64
+seed: 0
+out: out/harvest-70m-smoke
