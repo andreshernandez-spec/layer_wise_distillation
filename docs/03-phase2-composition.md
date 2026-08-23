@@ -78,3 +78,44 @@ script that reads the run logs, not a spreadsheet.
    run. The write-up then is Phase 1's measurement plus this negative.
 5. The gap (a) to (c) at 10^7 heal tokens is reported: it is the price of noise at
    Tier 0 scale and the number Phase 3 is trying to keep small.
+
+## What Phase 1 changes here (23 Aug 2026)
+
+Phase 1's results (`docs/02`) redraw parts of this phase before it starts.
+
+**1. There are two recipes, not one, and which applies depends on the anchor budget.**
+At ~1M anchor positions per interface, anchors alone beat anchors-plus-noise
+(stitching 0.450 against 0.527) and 300 passes do not overfit. At 94k they overfit
+from step 600 and noise is what prevents it (1.05 against 0.60 in eps, both seeds).
+Phase 2 must therefore chain **two** stacks, not one: an anchors-only stack in the
+abundant regime and a mixed stack in the scarce one. Composition may well behave
+differently in the two, and that is a result either way. Budget for the pair.
+
+**2. DAgger needs re-thinking before it is built.** C2.3 proposes retraining stage k on
+noise passed through the trained stages below it. Phase 1 showed that a student trained
+on pure moment-matched noise *diverges* on real activations while its own loss falls,
+so noise propagated through k-1 imperfect student stages is further off-manifold than
+the noise this phase starts from. Propagate the **anchors** through the trained stages
+instead (on-policy real activations, which is what DAgger means in imitation learning)
+and keep noise as the volume filler at the current stage. The C2.3 ablation should be
+that, not propagated noise.
+
+**3. The stopping signal is not eps, and may not be either metric.** Independent stages
+lack a downstream signal; §1.5 of the source document assigned that job to HT-SR alpha
+and `docs/02` shows alpha does not separate a healthy student from a degraded one at
+this scale. What does separate them is held-out real activations, which every stage has
+from its anchors. So the per-stage acceptance gate is: **train on the mix, stop on
+held-out anchors.** Cheap, and it is the signal that actually tracks the failure.
+There is an open question on top of this (`docs/02`, 3e8 cells): eps improved while the
+stitching delta worsened on one seed, so if the two come apart the stopping signal has
+to be the stitching delta, which costs a full-model pass. Resolve before Phase 3.
+
+**4. The amplification profile has a floor that is already measured.** C2.2 should be
+read against the teacher's own sensitivity: chained teacher stages amplify float-level
+input perturbations 10-1000x per stage (`tests/test_compose.py`). Student drift below
+that floor is not attributable to the student.
+
+**5. Q per stage is settled well below the plan's assumption.** Q* against the live-real
+oracle is 5.1e7 for real, 5.5e7 for recycled anchors and 7.5e7 for the recipe, against
+the source document's 1e8 per stage. Phase 2 should use 1e8 for headroom and report
+against Q*.
