@@ -588,3 +588,36 @@ Two rules follow, and they are cheap to obey:
 2. **R and L at 1e8 are tied, not close.** 0.450 against 0.452 nats is a twentieth of
    the median seed spread. The data-frugality claim is "indistinguishable from the
    oracle", which is stronger than the wording used before this check.
+
+### The scarce-anchor reversal replicates (both seeds)
+
+| arm | seed | eps best | eps final | stitch |
+|---|---|---|---|---|
+| R, anchors only | 0 / 1 | 0.632 / 0.633 | **1.061 / 1.052** | 2.188 / 1.801 |
+| C_mix, + noise | 0 / 1 | 0.593 / 0.588 | **0.600 / 0.595** | 1.415 / 1.243 |
+
+Both seeds, both metrics, same direction. The eps gap (0.46) is fifty times either
+arm's seed spread; the stitching gap (0.56 to 0.77 nats) exceeds both arms' seed
+spread, though with less margin because R's stitching itself varies 0.39 nats between
+seeds. The reversal is not a seed artefact.
+
+### 300 passes over 0.95M anchor positions do not overfit
+
+| cell | eps best (step) | eps final | stitch |
+|---|---|---|---|
+| R, 464 anchors, 1e8 (6104 steps) | 0.412 (6103) | 0.412 | 0.450 |
+| R, 464 anchors, 3e8 (18313 steps) | 0.374 (14800) | **0.374** | **0.782** |
+
+eps trajectory: 3.097 0.471 0.428 0.405 0.392 0.383 0.377 0.375 0.374 0.374 0.374.
+Monotone to a plateau: with ~1M distinct positions there is no overfitting even at
+300 passes, where 94k positions overfit from step 600. So the overfitting threshold
+sits between 94k and 950k positions, which is what `a92`/`a184` are locating.
+
+**An open question this raised, not a result**: eps improved from 0.412 to 0.374
+between 1e8 and 3e8 while the stitching delta *worsened* from 0.450 to 0.782. A
+0.33-nat move is above the median seed spread (0.106) but well inside the observed
+maximum (1.339), and the 3e8 cells have one seed, so this cannot be called yet. If it
+survives a second seed it matters: it would mean the interface objective and
+end-to-end loss come apart in the regime the recipe is meant to run in, and that the
+stage trainer needs a stopping signal that is not eps. Queue a second seed before
+citing it either way.
