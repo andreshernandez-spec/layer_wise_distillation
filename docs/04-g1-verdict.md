@@ -29,7 +29,11 @@ stitching.
 **4. A written Tier-1/2 budget forecast from the measured Q\*.** Met, below.
 
 **5. The length ablation.** Not run, and it should be: the whole campaign is L=2048.
-Carry it into Phase 2 rather than reopening Phase 1.
+Carry it into Phase 2 rather than reopening Phase 1. Note what it would test now that
+the arms are understood: L enters through attention, and attention is where the noise
+arms already fail (entropy 4.81 against 2.44 on real inputs). A shorter L makes cells
+cheaper but changes the quantity the noise arms are worst at, so it is a Phase 2
+decision about cost, not a Phase 1 result that is missing.
 
 **Formally, G1 passes.** The rest of this document is why that sentence would be
 misleading on its own.
