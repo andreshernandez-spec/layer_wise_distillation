@@ -29,3 +29,14 @@ def test_non_finite_weights_are_reported_not_raised():
     assert esd(w) is None
     m = metrics_for({"good": torch.randn(300, 300), "bad": w})
     assert "alpha" in m["good"] and m["bad"].get("non_finite") is True
+
+
+def test_metrics_are_json_serializable():
+    """The pod pass computed everything and then died on json.dump: numpy scalars are
+    not serializable, and the failure came after all the work."""
+    import json
+    import torch
+    from lwd.eval.spectral import metrics_for
+    m = metrics_for({"w": torch.randn(300, 300)})
+    json.dumps(m)   # must not raise
+    assert isinstance(m["w"]["alpha"], float) and isinstance(m["w"]["n_tail"], int)

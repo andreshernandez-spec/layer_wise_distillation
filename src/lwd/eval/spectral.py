@@ -55,6 +55,11 @@ def metrics_for(state: dict, min_dim: int = 256) -> dict:
                 out[k] = {"non_finite": True, "shape": list(v.shape)}
                 continue
             a, ks, nt = alpha_hill_ks(lam)
-            out[k] = {"alpha": a, "ks": ks, "n_tail": nt, "stable_rank": stable_rank(lam),
-                      "log_spectral_norm": float(np.log10(lam.max())), "shape": list(v.shape)}
+            # plain Python floats: numpy scalars are not JSON serializable, and the
+            # caller dumps this. Discovered after a 50-minute pass finished its work
+            # and then died on json.dump (23 Aug 2026).
+            out[k] = {"alpha": float(a), "ks": float(ks), "n_tail": int(nt),
+                      "stable_rank": float(stable_rank(lam)),
+                      "log_spectral_norm": float(np.log10(lam.max())),
+                      "shape": [int(d) for d in v.shape]}
     return out
