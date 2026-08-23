@@ -10,10 +10,15 @@ import numpy as np
 import torch
 
 
-def esd(W: torch.Tensor) -> np.ndarray:
+def esd(W: torch.Tensor):
+    """Eigenvalues of W^T W, ascending. None if the matrix is not finite: a poisoned
+    checkpoint otherwise surfaces as LAPACK's "SVD did not converge", which is a
+    confusing way to learn that a run went NaN."""
     w = W.detach().float().cpu().numpy()
     if w.ndim != 2:
         w = w.reshape(w.shape[0], -1)
+    if not np.isfinite(w).all():
+        return None
     s = np.linalg.svd(w, compute_uv=False)
     return np.sort(s ** 2)
 
@@ -46,6 +51,9 @@ def metrics_for(state: dict, min_dim: int = 256) -> dict:
     for k, v in state.items():
         if v.ndim == 2 and min(v.shape) >= min_dim:
             lam = esd(v)
+            if lam is None:
+                out[k] = {"non_finite": True, "shape": list(v.shape)}
+                continue
             a, ks, nt = alpha_hill_ks(lam)
             out[k] = {"alpha": a, "ks": ks, "n_tail": nt, "stable_rank": stable_rank(lam),
                       "log_spectral_norm": float(np.log10(lam.max())), "shape": list(v.shape)}

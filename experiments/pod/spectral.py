@@ -17,7 +17,12 @@ def main(d):
     for f in sorted(glob.glob(f"{d}/*.pt")):
         cell = os.path.basename(f)[:-3]
         m = metrics_for(torch.load(f, map_location="cpu"))
-        al = [v["alpha"] for v in m.values()]; sr = [v["stable_rank"] for v in m.values()]
+        al = [v["alpha"] for v in m.values() if "alpha" in v]
+        sr = [v["stable_rank"] for v in m.values() if "stable_rank" in v]
+        if not al:
+            out[cell] = {"per_matrix": m, "non_finite": True}
+            print(cell, "non-finite weights, skipped", flush=True)
+            continue
         out[cell] = {"per_matrix": m, "alpha_mean": sum(al) / len(al), "alpha_min": min(al),
                      "alpha_max": max(al), "stable_rank_mean": sum(sr) / len(sr)}
         print(cell, round(out[cell]["alpha_mean"], 2), round(out[cell]["stable_rank_mean"], 1), flush=True)

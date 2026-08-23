@@ -16,3 +16,16 @@ def test_alpha_recovers_power_law_tail():
 def test_stable_rank():
     lam = np.array([4.0, 1.0, 1.0, 1.0, 1.0])
     assert stable_rank(lam) == 2.0
+
+
+def test_non_finite_weights_are_reported_not_raised():
+    """A NaN-poisoned checkpoint used to surface as LAPACK's 'SVD did not converge',
+    which says nothing about the real problem."""
+    import torch
+    from lwd.eval.spectral import esd, metrics_for
+    w = torch.randn(300, 300)
+    assert esd(w) is not None
+    w[5, 7] = float("nan")
+    assert esd(w) is None
+    m = metrics_for({"good": torch.randn(300, 300), "bad": w})
+    assert "alpha" in m["good"] and m["bad"].get("non_finite") is True
