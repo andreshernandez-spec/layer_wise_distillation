@@ -63,7 +63,7 @@ def train_stage(student, teacher, sampler, cfg: TrainConfig, phi_in=None, phi_ou
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / cfg.warmup) * 0.5 * (1 + math.cos(math.pi * min(1.0, s / cfg.steps))))
     use_amp = cfg.amp and device != "cpu"
-    hist, t0, seen = [], time.time(), 0
+    hist, t0, seen, skipped = [], time.time(), 0, 0
     for step in range(cfg.steps):
         x = sampler.sample(cfg.batch, cfg.seq_len, g, device)
         if isinstance(x, tuple):
@@ -76,14 +76,26 @@ def train_stage(student, teacher, sampler, cfg: TrainConfig, phi_in=None, phi_ou
         loss = rel_mse(p.float(), t)
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(student.parameters(), cfg.grad_clip)
-        opt.step(); sched.step()
+        gnorm = torch.nn.utils.clip_grad_norm_(student.parameters(), cfg.grad_clip)
+        # Skip the update rather than let one bad batch poison the weights.
+        # clip_grad_norm_ scales every parameter by a coefficient derived from the
+        # total norm, so a single non-finite gradient makes the whole model NaN and it
+        # never recovers. Seen once in 129 cells (C_mix at 3e8, step 13741 of 18311:
+        # loss 0.2246, then nan for the remaining 4570 steps, 2.7 h of GPU wasted).
+        if torch.isfinite(loss) and torch.isfinite(gnorm):
+            opt.step()
+        else:
+            skipped += 1
+            opt.zero_grad(set_to_none=True)
+        sched.step()
         seen += cfg.batch * cfg.seq_len
         rec = {"step": step, "loss": float(loss), "positions": seen, "lr": sched.get_last_lr()[0],
-               "sec": time.time() - t0}
+               "sec": time.time() - t0, "skipped": skipped}
         if eval_X is not None and (step % cfg.eval_every == 0 or step == cfg.steps - 1):
             rec["eval"] = evaluate(student, teacher, eval_X, phi_in, phi_out, cfg.batch, device)
         hist.append(rec)
+        if skipped and (skipped == 1 or step % cfg.log_every == 0):
+            log({"warning": "non-finite step skipped", "step": step, "skipped_total": skipped})
         if step % cfg.log_every == 0 or "eval" in rec:
             log({k: (round(v, 5) if isinstance(v, float) else v) for k, v in rec.items()})
     return hist

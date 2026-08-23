@@ -1,4 +1,6 @@
 """Student stage trains on real activations of pythia-70m stage 1 (CPU, slow tier)."""
+import math
+
 import numpy as np
 import pytest
 import torch
@@ -37,3 +39,36 @@ def test_student_learns_teacher_stage_on_real_activations():
     e1 = hist[-1]["eval"]
     assert e1 < 0.7 * e0, (e0, e1)
     assert hist[-1]["positions"] == 60 * 4 * 64
+
+
+def test_a_non_finite_batch_does_not_poison_the_model():
+    """One NaN gradient used to make every parameter NaN for the rest of the run:
+    clip_grad_norm_ scales all parameters by a coefficient built from the total norm.
+    Seen once in 129 cells, and fatal each time it happens."""
+    import torch
+    from lwd.stage.student import StudentStage, student_config
+    from lwd.stage.train import TrainConfig, train_stage
+
+    class PoisonSampler:
+        """Returns one batch containing an inf, then clean batches."""
+        def __init__(self, d): self.d, self.n = d, 0
+
+        def sample(self, b, L, g, device="cpu"):
+            x = torch.randn(b, L, self.d, generator=g)
+            self.n += 1
+            if self.n == 3:
+                x[0, 0, 0] = float("inf")
+            return x
+
+    d = 64
+    cfg = student_config(MODEL, d_s=d, n_layers=1, n_heads=4)
+    student = StudentStage(cfg, seed=0)
+    teacher = StudentStage(cfg, seed=1)      # a fixed random "teacher" is enough here
+    for p in teacher.parameters():
+        p.requires_grad_(False)
+    tc = TrainConfig(steps=8, batch=2, seq_len=16, lr=1e-3, warmup=2, eval_every=10**9,
+                     log_every=10**9, amp=False)
+    hist = train_stage(student, teacher, PoisonSampler(d), tc, log=lambda r: None)
+    assert hist[-1]["skipped"] >= 1, "the poisoned batch should have been skipped"
+    assert all(torch.isfinite(p).all() for p in student.parameters()), "model was poisoned"
+    assert math.isfinite(hist[-1]["loss"]), hist[-1]["loss"]
