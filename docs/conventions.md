@@ -73,3 +73,15 @@ skip without it.
   `ulimit -v` is not an option because CUDA reserves virtual address space far beyond
   physical use.
 - Quantile reservoirs are 2^16 rows (0.5 GB per interface at d=2048), not 2^18.
+
+## Reading the Phase 1 cells (added 23 Aug 2026)
+
+Seed-to-seed spread over 42 same-arm pairs: **eps median 0.004, stitching delta median
+0.106 nats, max 1.339**. So:
+
+- Draw no conclusion from a stitching difference below Q = 3e6, where the whole
+  between-arm spread is inside the seed band; eps separates from 1e6.
+- Quote a difference as a result only against the seed spread at that Q, not against
+  zero. Two arms 0.002 nats apart are tied.
+- The platform effect (laptop vs A100) is 0.46% on eps, the same order as seed noise,
+  so cells from both may share a table.

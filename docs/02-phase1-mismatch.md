@@ -554,3 +554,37 @@ The honest framing for the paper is therefore not "noise replaces data" but **"n
 buys back the difference between storing activations and recomputing them"**, with the
 crossover measured. That is a systems claim as much as a statistical one, and it fits
 the depth-parallel story the intro already has to tell.
+
+## Which cells are allowed to carry a conclusion
+
+91 cells make it worth asking where the two metrics agree and where a difference is
+just seed noise. Between-arm spread against seed-to-seed spread, full-anchor cells:
+
+| Q | eps spread across arms | stitch spread across arms | Spearman(eps, stitch) |
+|---|---|---|---|
+| 1e5 | 0.064 | 0.319 | -0.92 |
+| 3e5 | 0.237 | 0.297 | -0.83 |
+| 1e6 | 0.257 | 0.119 | -0.24 |
+| 3e6 | 0.397 | 1.827 | +0.88 |
+| 1e7 | 1.013 | 5.593 | +0.98 |
+| 3e7 | 0.865 | 2.960 | +0.95 |
+| 1e8 | 10.721 | 7.471 | +0.90 |
+
+Seed spread, same arm and Q, 42 pairs: **eps median 0.004, stitch median 0.106 nats
+(max 1.339)**.
+
+The negative rank correlations at low Q are **not a finding**: at 1e5, 3e5 and 1e6 the
+entire between-arm spread in the stitching delta (0.12 to 0.32 nats) sits inside the
+seed band, so the ranking there is noise being ranked. Where the arms genuinely
+separate, from 3e6 up, the two metrics agree strongly (+0.88 to +0.98). That is the
+reassuring answer, and it had to be checked rather than assumed.
+
+Two rules follow, and they are cheap to obey:
+
+1. **No conclusion from the stitching delta below Q = 3e6**, and none from eps below
+   1e6 (eps separates earlier: its seed spread is 0.004 against a between-arm spread
+   of 0.257 at 1e6). The "first pass" section above draws only eps conclusions at 1e6,
+   which is inside that rule; its stitching numbers should be ignored.
+2. **R and L at 1e8 are tied, not close.** 0.450 against 0.452 nats is a twentieth of
+   the median seed spread. The data-frugality claim is "indistinguishable from the
+   oracle", which is stronger than the wording used before this check.

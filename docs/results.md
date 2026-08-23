@@ -75,7 +75,7 @@ beta = 0.324 [0.297, 0.506] live real, 0.320 [0.293, 0.532] recycled anchors, 0.
 zero for all three; only pure noise has a floor (0.417) and it diverges.
 
 At Q = 1e8, stitching delta in nats: live real (1e7 distinct positions) **0.452**,
-recycled anchors (0.95e6 distinct, ~100 passes) **0.450**, anchors + 91M noise
+recycled anchors (0.95e6 distinct, ~100 passes) **0.450**, a difference of a twentieth of the seed spread, i.e. indistinguishable, anchors + 91M noise
 positions 0.527, pure noise 7.92. Ten times fewer distinct tokens, same quality; added
 noise makes it worse. `docs/02` "The complete grid".
 
