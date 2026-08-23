@@ -103,3 +103,10 @@ Settled 23 Aug 2026: (a) the crossover is at ~250k real positions per interface
 (b) eps and end-to-end loss diverge with training length: R at 464 anchors improves
 eps 0.412 to 0.373 from 1e8 to 3e8 while its stitching delta worsens 0.450 to 0.710,
 both seeds. A stage must not be stopped on eps. `docs/02`.
+
+Corrected 23 Aug 2026: at the full anchor budget, "noise buys nothing" holds at 1e8
+and fails at 3e8. Anchors-only improves eps 0.412 to 0.373 while stitching degrades
+0.450 to 0.710; anchors+noise improves both (0.463 to 0.393 eps, 0.527 to 0.413
+stitching) and wins by 0.297 nats at 3e8. One mechanism explains the phase: noise is a
+regularizer against over-fitting the interface objective, which arises from too few
+anchors or too much training. `docs/02`.

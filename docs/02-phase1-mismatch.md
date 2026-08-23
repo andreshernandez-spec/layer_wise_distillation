@@ -737,3 +737,48 @@ Monotone, and it crosses zero **between 188k and 377k real positions per interfa
 call it ~250k. Below that, noise is what makes stagewise training work; above it, noise
 is a small tax. That is the number Tier 1 and Tier 2 planning needs, because it decides
 whether an interface can be served from a stored anchor set or has to recompute.
+
+## Noise prevents the divergence, and that unifies the phase (23 Aug 2026)
+
+The rerun of `C_mix@3e8` completed cleanly (no non-finite step at all, `skipped: 0`,
+eps trajectory monotone 3.098 to 0.393). Put it beside the anchors-only arm at the
+same budget:
+
+| 464 anchors (0.95M positions) | eps 1e8 | eps 3e8 | stitch 1e8 | stitch 3e8 |
+|---|---|---|---|---|
+| R, anchors only | 0.412 | 0.373 | **0.450** | **0.710** |
+| C_mix, + noise | 0.463 | 0.393 | 0.527 | **0.413** |
+
+**The anchors-only arm improves eps and degrades end-to-end. The mixed arm improves
+both.** At 1e8 the two are tied on stitching (0.078 apart, inside the band); at 3e8
+the mixed arm wins by 0.297, and it beats even R's better seed (0.638) by 0.225.
+
+### This unifies the phase under one mechanism
+
+Two findings that looked separate are the same thing:
+
+- **too few anchors** (94k, `a46`): the anchors-only student peaks at step 600 and
+  degrades; noise prevents it;
+- **too much training** (3e8 at 0.95M anchors): the anchors-only student keeps
+  improving eps while the composed model degrades; noise prevents it.
+
+In both cases the student is over-fitting *the interface objective* in a way that
+hurts composition, and in both cases noise is the regularizer that stops it. There is
+one phenomenon here, not two, and noise addresses it.
+
+### What this corrects
+
+Earlier in this document and in `docs/04` the full-anchor result was read as "noise
+buys nothing at 0.95M positions". **That was training-length-specific**: true at 1e8,
+false at 3e8. The anchor-budget crossover table above is likewise a statement about
+1e8 cells and should be read as such; the same table at 3e8 would very likely move
+right, because the pressure noise protects against grows with training.
+
+The corrected claim: **noise is a regularizer against over-fitting the interface
+objective, and both a small anchor budget and a long training run create that
+over-fitting.** It is worth its cost whenever a stage is trained hard, which is
+whenever a stage is trained to the quality this project needs.
+
+**Seeding**: `C_mix@3e8` is one seed against R's two. A second seed is running. The
+effect (0.297, or 0.225 against R's better seed) is well outside R's own 0.144 seed
+spread, so a second seed is insurance on a headline rather than a live doubt.
