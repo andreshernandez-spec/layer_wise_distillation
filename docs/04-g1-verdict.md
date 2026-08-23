@@ -105,7 +105,7 @@ supports.
 |---|---|---|
 | sequence structure of the noise | AR(1) or fitted process may fix attention | **AR(1) is i.i.d.**, both seeds. Only real sequences move the teacher's attention entropy (2.44 real, 4.81 noise, 3.80 at 1:10 mix) |
 | marginal Gaussianization | "unbounded and free of mismatch", §1.1 | **worse on 8 of 8 readable cells**, by 0.33 to 2.33 nats. phi cannot move the optimum but does reweight the finite-step objective |
-| HT-SR alpha as a per-stage gate | §1.5, the substitute for a downstream signal | **does not separate** a healthy student (eps 0.57) from a degraded one (1.34). Use held-out anchors |
+| HT-SR alpha as a per-stage gate | §1.5, the substitute for a downstream signal | **fails on 112 students**: the +0.80 correlation across all of them is a training-length artefact, and within a fixed budget the sign flips (-0.87 at 1e7, +0.84 at 1e8). Use held-out anchors |
 | Hadamard rotation before fp8 anchors | §2, Plan-B synergy | **wrong trick**: rotation makes fp8 worse (0.026 to 0.31). int8 + per-channel std gives 0.007 |
 
 ---

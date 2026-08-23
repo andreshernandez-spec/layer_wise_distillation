@@ -782,3 +782,40 @@ whenever a stage is trained to the quality this project needs.
 **Seeding**: `C_mix@3e8` is one seed against R's two. A second seed is running. The
 effect (0.297, or 0.225 against R's better seed) is well outside R's own 0.144 seed
 spread, so a second seed is insurance on a headline rather than a live doubt.
+
+## Spectral metrics cannot gate a stage: 112 students (23 Aug 2026)
+
+`spectral.json`, alpha (Hill with KS-chosen xmin) and stable rank per weight matrix of
+every saved student, against measured quality. Spearman against the stitching delta.
+
+**Across all 112 students**: alpha_mean +0.80, alpha_min +0.77, stable_rank +0.80.
+That looks like a usable gate and it is an artefact: training length moves the spectra
+and the quality together, so the correlation is with "how long did this train", not
+with "is this student good".
+
+**Within a fixed budget**, which is the question a per-stage gate actually asks:
+
+| Q | n | alpha_mean | alpha_min | stable_rank |
+|---|---|---|---|---|
+| 1e5 | 14 | +0.20 | -0.70 | -0.82 |
+| 3e5 | 14 | +0.16 | -0.59 | -0.71 |
+| 1e6 | 20 | -0.07 | -0.05 | -0.14 |
+| 3e6 | 14 | -0.50 | -0.21 | -0.49 |
+| 1e7 | 20 | -0.59 | **-0.87** | -0.43 |
+| 3e7 | 14 | -0.77 | -0.77 | -0.57 |
+| 1e8 | 13 | +0.13 | **+0.84** | +0.26 |
+
+**The sign flips.** At 1e7 and 3e7 a higher alpha predicts a better student
+(rho -0.87, -0.77); at 1e8 it predicts a worse one (+0.84); at 1e6 there is no signal
+at all. A gate needs a relationship with a fixed direction, and this one does not have
+one. `docs/04` can now say alpha fails as a stage gate on 112 students rather than on
+the five it was based on.
+
+Two honest caveats. The 1e8 group mixes anchor budgets (46 to 464 sequences), which is
+its own confound, so the flip is suggestive of instability rather than proof of a
+reversal at 1e8 specifically. And these students are young by HT-SR standards (alpha
+6 to 20 against the 2 to 5 band the theory is about), so this says spectral metrics do
+not gate *this* regime, not that HT-SR is wrong about the regime it was built for.
+
+The working alternative is already measured and cheap: **stop on held-out anchors,
+and for the final acceptance use the stitching delta** (`docs/03`).

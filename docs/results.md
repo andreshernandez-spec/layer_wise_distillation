@@ -110,3 +110,8 @@ and fails at 3e8. Anchors-only improves eps 0.412 to 0.373 while stitching degra
 stitching) and wins by 0.297 nats at 3e8. One mechanism explains the phase: noise is a
 regularizer against over-fitting the interface objective, which arises from too few
 anchors or too much training. `docs/02`.
+
+Spectral gates, 112 students (23 Aug 2026): alpha correlates +0.80 with stitching
+across all students, which is a training-length artefact; within a fixed budget the
+sign flips (-0.87 at 1e7, +0.84 at 1e8, no signal at 1e6). Not usable as a per-stage
+gate. `docs/02`.
