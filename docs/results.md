@@ -62,3 +62,8 @@ headline was a step-count artefact; noise adds nothing at ~1M anchors per interf
 Platform check (23 Aug 2026): 9 Phase 1 cells run on both the RTX 3080 Laptop and a
 RunPod A100 SXM, same torch, reproduce eps to a median 0.00% and max 0.46% relative
 difference. Laptop and pod cells can be read in one table.
+
+Correction (23 Aug 2026): arm "C" under `contract: zca` is mathematically the same
+measure as arm "G" (C and G eps agree to 0.00-0.01% at every shared Q). The marginal
+Gaussianization the source document argues for is untested; `grid-1.4b-gauss.yaml`
+tests it, and must be read on the stitching delta because eps is phi-dependent.

@@ -1,0 +1,12 @@
+# Does marginal Gaussianization of the interface earn its place? The source document
+# (§1.1) argues normalization strength is free because phi is a bijection applied to
+# both sides. Every cell so far used `contract: zca` (affine only), under which the
+# "contract-Gaussianized" noise arm is *exactly* the moment-matched Gaussian arm:
+# C and G agree to 0.00-0.01% at every shared Q. This grid runs the decisive arms in
+# Gaussianized coordinates so the claim is measured rather than assumed.
+tag: gz
+arms: [L_iid, R_iid, C_mix, G_iid]
+q:      [1.0e6, 1.0e7, 3.0e7]
+q_real: [1.0e6, 1.0e7, 3.0e7]
+seeds: [0]
+multi_seed_below: 0

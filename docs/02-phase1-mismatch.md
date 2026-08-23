@@ -414,3 +414,34 @@ The grid was resized rather than copied. The first passes settled three arms, so
 `L_iid` (the true oracle, missing from the original grid) and `G_mix` (plain Gaussian
 plus anchors: does the contract earn its place inside the mix?) join the four that run
 the full ladder to 1e8 with two seeds.
+
+## Correction: the C arm was never the contract arm (23 Aug 2026)
+
+Every cell run before this point used `contract: zca`, an affine map. Under an affine
+phi, `ContractGaussianized` (draw z ~ N(0,I) in phi coordinates, push through
+phi^-1) is **exactly** the moment-matched Gaussian, because phi^-1 is just
+`z @ Winv + mean`. The data says so unambiguously:
+
+| Q | C_iid eps | G_iid eps | diff |
+|---|---|---|---|
+| 1e5 | 2.9409 | 2.9409 | 0.00% |
+| 1e6 (s0 / s1) | 1.6527 / 1.6546 | 1.6527 / 1.6546 | 0.00% |
+| 1e7 (s0 / s1) | 0.8725 / 0.8720 | 0.8726 / 0.8721 | 0.01% |
+| C_mix vs G_mix, 1e6 | 1.6394 | 1.6394 | 0.00% |
+
+So arm C in the tables above is **not** the contract-Gaussianized arm this document
+describes; it is a second copy of the Gaussian arm. Every result stated so far stands
+(the recipe arm is anchors plus moment-matched Gaussian noise, which is what it always
+was), but the source document's §1.1 claim that marginal Gaussianization is free
+because phi is a bijection has never been tested. Marginal Gaussianization only enters
+when the cell config sets `contract: gauss`, which builds phi as the per-channel
+inverse-CDF map followed by a whitening fitted to the Gaussianized anchors.
+
+`grid-1.4b-gauss.yaml` (tag `gz`) runs L, R, C_mix and G_iid in Gaussianized
+coordinates at 1e6, 1e7 and 3e7 to settle it.
+
+**Read that grid on the stitching delta, not on eps.** eps is a relative MSE *in phi
+coordinates*, so changing phi changes the metric: the same student scores eps 1.08
+under `zca` and 5.40 under `gauss` on the 70m smoke, which says nothing about quality.
+The stitching delta is next-token loss in nats through the real model and is
+phi-independent, so it is the only number comparable across contract settings.
