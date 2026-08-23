@@ -445,3 +445,68 @@ coordinates*, so changing phi changes the metric: the same student scores eps 1.
 under `zca` and 5.40 under `gauss` on the 70m smoke, which says nothing about quality.
 The stitching delta is next-token loss in nats through the real model and is
 phi-independent, so it is the only number comparable across contract settings.
+
+## The complete grid: 89 cells, two seeds, one A100 (23 Aug 2026)
+
+`out/phase1-1.4b-a100/`, grid `grid-1.4b-full.yaml`, SHA 82ea470, 3 h 45 min, ~$5.
+Every arm on the full Q ladder; two seeds below 3e7.
+
+### beta, the number the project was built to measure
+
+`fit.py --metric best_eval`, eps(Q) = c Q^-beta + eps_inf, 13 points per arm,
+bootstrap 90% CIs:
+
+| arm | beta | eps_inf | Q* vs L@1e7 |
+|---|---|---|---|
+| L (live real, distinct) | **0.324** [0.297, 0.506] | 0 [0, 0.186] | 5.1e7 |
+| R (anchors, recycled) | **0.320** [0.293, 0.532] | 0 [0, 0.253] | 5.5e7 |
+| C_mix (recipe) | **0.305** [0.281, 0.596] | 0 [0, 0.382] | 7.5e7 |
+| C_ar1 | 0.279 [0.251, 0.586] | 0 [0, 0.530] | 1.4e8 |
+| G_iid (pure noise) | 0.339 [0.260, 0.802] | **0.417** [0, 0.792] | none |
+| I_iid (isotropic) | 0.206 [0.182, 0.858] | 0 [0, 1.235] | 1.7e9 |
+
+**beta is ~0.32 whatever the data is**, and the three arms that work agree inside each
+other's CIs. The exponent is a property of the stage-fitting problem, not of the input
+measure; what the input measure changes is eps_inf, and only pure noise has one that is
+not consistent with zero. This is the answer Phase 1 existed to produce.
+
+### The decisive numbers, at Q = 1e8
+
+Read the **stitching delta**, not eps: it is next-token loss in nats through the real
+model, and it is what composition will inherit.
+
+| arm | distinct real positions | noise positions | eps | stitch delta |
+|---|---|---|---|---|
+| L (live real) | 1e7 | 0 | 0.353 | **0.452** |
+| R (anchors, ~100 passes) | 0.95e6 | 0 | 0.412 | **0.450** |
+| C_mix (recipe) | 0.95e6 | 9.1e7 | 0.463 | 0.527 |
+| G_mix (= C_mix, no marginal map) | 0.95e6 | 9.1e7 | 0.466 | 0.529 |
+| G_iid (pure noise) | 0 | 1e8 | 0.886 best, **11.07 final** | 7.92 |
+
+1. **Data frugality is real and it is the result of Phase 1.** 0.95M distinct real
+   positions recycled a hundred times *match the live-real oracle* on the stitching
+   delta (0.450 vs 0.452) while using **ten times fewer distinct tokens**. The eps gap
+   (0.412 vs 0.353) does not survive into the metric that matters.
+2. **Noise volume does not help.** Adding 91M noise positions to those same anchors
+   makes the student worse (0.527 vs 0.450). Nine tenths of the batch is noise and it
+   buys nothing.
+3. **Pure noise diverges**, and its own training loss falls the whole way.
+4. `G_mix` tracks `C_mix` to 0.6% everywhere, as it must: they are the same measure
+   under an affine contract (see the correction above).
+5. AR(1) is i.i.d., now with two seeds (0.859 / 0.863 against 0.865 / 0.869 at 1e7).
+
+Seed spread is <= 1.5% (L at 3e7: 0.455 and 0.455; R: 0.479 and 0.486), the same order
+as the platform effect, and far below the effects being claimed.
+
+### G1
+
+`gate.py`: the recipe arm meets both pre-registered margins (eps_inf CI upper bound
+0.382 <= 1.5 x 0.532; stitch 0.527 <= 2 x 0.998), and every other noise arm fails on
+stitching. **But the control says the pass belongs to the anchors, not the noise**: R
+without any noise is better than C_mix with it. Criterion 3 is met and the thesis it
+was written to protect is not supported.
+
+One weakness of criterion 3 worth recording: the eps half is a CI-upper-bound test,
+and with a wide CI it passes arms that visibly diverge (G_iid's ε_inf CI upper bound
+is 0.792 against a 0.798 margin, while the arm ends at eps 11). The stitching half is
+what carries the criterion. Any restatement of G1 should lead with stitching.

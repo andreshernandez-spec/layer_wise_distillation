@@ -67,3 +67,14 @@ Correction (23 Aug 2026): arm "C" under `contract: zca` is mathematically the sa
 measure as arm "G" (C and G eps agree to 0.00-0.01% at every shared Q). The marginal
 Gaussianization the source document argues for is untested; `grid-1.4b-gauss.yaml`
 tests it, and must be read on the stitching delta because eps is phi-dependent.
+
+## Phase 1 complete grid (23 Aug 2026, A100, 89 cells, two seeds, SHA 82ea470)
+
+beta = 0.324 [0.297, 0.506] live real, 0.320 [0.293, 0.532] recycled anchors, 0.305
+[0.281, 0.596] recipe: the same exponent whatever the data. eps_inf consistent with
+zero for all three; only pure noise has a floor (0.417) and it diverges.
+
+At Q = 1e8, stitching delta in nats: live real (1e7 distinct positions) **0.452**,
+recycled anchors (0.95e6 distinct, ~100 passes) **0.450**, anchors + 91M noise
+positions 0.527, pure noise 7.92. Ten times fewer distinct tokens, same quality; added
+noise makes it worse. `docs/02` "The complete grid".
