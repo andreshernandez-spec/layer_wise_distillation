@@ -621,3 +621,51 @@ survives a second seed it matters: it would mean the interface objective and
 end-to-end loss come apart in the regime the recipe is meant to run in, and that the
 stage trainer needs a stopping signal that is not eps. Queue a second seed before
 citing it either way.
+
+## Marginal Gaussianization makes it worse (23 Aug 2026)
+
+12 cells, `contract: gauss` against `contract: zca`, same arms, same Q, same seeds.
+Stitching delta in nats (eps is not comparable across contracts; seed spread 0.106):
+
+| arm | Q=1e6 | Q=1e7 | Q=3e7 |
+|---|---|---|---|
+| L (live real) | -0.141 | **+0.790** | **+0.325** |
+| R (anchors) | -0.168 | **+0.762** | **+0.374** |
+| C_mix | -0.290 | **+1.416** | **+2.334** |
+| G_iid | -0.201 | **+1.359** | **+1.997** |
+
+Positive means Gaussianized is worse. **Eight of eight readable cells say it is worse**,
+by 0.33 to 2.33 nats, all far outside the seed spread. The recipe arm suffers most.
+
+### Why this does not contradict the bijection argument, and why the argument is still
+### the wrong guide
+
+Source document §1.1 says normalization strength is "unbounded and free of mismatch"
+because phi is a bijection applied to both sides, so matching `T~ = phi_out . T .
+phi_in^-1` exactly is matching `T` exactly. That is true, and it is a statement about
+the **optimum**. Training does not reach the optimum: it takes a fixed number of
+finite gradient steps against an MSE, and the coordinate system decides what that MSE
+weights and how the curvature is distributed.
+
+Marginal Gaussianization squashes the massive-activation channels, which is exactly
+what it is for (`docs/01` C0.2 measures them at 45x the median channel std). Squashing
+them monotonically preserves information, and simultaneously **down-weights the
+squared error on the channels the downstream model depends on most** - the same
+attention-sink channels §1.1 calls load-bearing. The student then optimizes something
+less aligned with end-to-end loss, and the stitching delta is where that shows.
+
+So: the bijection argument is right about what the optimum is and wrong as a guide to
+what to train in. **phi is not free. It reweights the finite-time objective.** Any
+future claim that a normalization is "free because it is a bijection" needs this
+measurement attached.
+
+**A pattern below the readability floor, recorded but not claimed**: at Q=1e6 all four
+arms come out *better* under Gaussianization (-0.14 to -0.29). That is inside the seed
+band so it is not a result, but it is 4 of 4 in the same direction, and it is what
+better conditioning early in training would look like. If someone wants it, the cheap
+test is the 3e5-1e6 range with several seeds. It would not change the recommendation:
+whatever happens early, the arms that matter are worse by 1e7.
+
+**Recommendation**: keep `contract: zca` everywhere. Marginal Gaussianization stays in
+the codebase as a tested, working option (`Contract`, `MarginalGaussianize`) with this
+measurement next to it.

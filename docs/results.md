@@ -88,3 +88,8 @@ Scarce-anchor reversal replicates on both seeds (R final eps 1.061/1.052 against
 C_mix 0.600/0.595). At 464 anchors there is no overfitting even at 300 passes
 (eps 0.374, plateau). Open: R's stitching worsened 0.450 to 0.782 between 1e8 and 3e8
 while eps improved; one seed only, needs a second before it can be cited.
+
+Marginal Gaussianization (23 Aug 2026, 12 cells): worse than affine whitening on 8 of
+8 readable cells, by 0.33 to 2.33 nats of stitching delta. The source document's
+"normalization is free because phi is a bijection" holds for the optimum and not for
+finite-step training. Default stays `contract: zca`. `docs/02`.

@@ -7,6 +7,15 @@ what the `es` project measured on the same free tiers.
 
 ## 1. What holds
 
+> **Measured and partly overturned, 23 Aug 2026.** The bijection argument is correct
+> about the optimum and does not survive as advice: marginal Gaussianization, the
+> strongest normalization §1.1 licenses, is **worse on 8 of 8 readable cells** by 0.33
+> to 2.33 nats of stitching delta. phi is a bijection, so it cannot move the optimum,
+> but it does reweight the finite-step objective, and squashing the massive-activation
+> channels down-weights exactly the channels the downstream model needs. `docs/02`
+> "Marginal Gaussianization makes it worse". The rest of the section stands, and
+> `contract: zca` is the default.
+
 **The bias analysis (§1.1) is the strongest part of the document.** "A penalty tilts the
 optimum; a bijection applied to both sides moves nothing" is the right dividing line,
 and it is what lets normalization be as aggressive as needed (ZCA, marginal
