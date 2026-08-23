@@ -16,7 +16,9 @@ import yaml
 def cells(grid):
     for arm in grid["arms"]:
         m, s = arm.split("_")
-        qs = grid["q_real"] if m in ("R", "L") else grid["q"]
+        # q_by_arm lets a known-negative arm stop early instead of spending the same
+        # budget as the arms still in the race
+        qs = grid.get("q_by_arm", {}).get(arm) or (grid["q_real"] if m in ("R", "L") else grid["q"])
         for q in qs:
             seeds = grid["seeds"] if float(q) <= float(grid.get("multi_seed_below", 0)) else [0]
             for seed in seeds:

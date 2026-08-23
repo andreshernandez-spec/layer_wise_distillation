@@ -100,6 +100,43 @@ silently twice on a dropped connection (no growth for 20 min, HF reachable); run
 grows. Plan big downloads (Pythia-2.8B is 5.6 GB, OLMo-2-7B 14 GB) overnight or on the
 Kaggle side where the checkpoint can be a dataset input.
 
+## The rented A100 (23 Aug 2026)
+
+**Why**: the laptop's Phase 1 queue was ~11 h and the full 78-cell grid ~40 h more.
+One A100 SXM 80GB on RunPod COMMUNITY is $1.39/h and measured **4.5x the laptop**
+(harvest 0.19 s/row against 0.84), so the whole of Phase 1 is a few hours and under
+$15. Pod `lwd-phase1-a100`, `experiments/pod/`.
+
+**The 8.2 GB of anchors never move.** Laptop upload measured **773 kB/s**, so shipping
+them would take ~3 h. The pod regenerates them from the declared slice (21 MB of HTTP
+range requests) plus a checkpoint it pulls at its own bandwidth, and asserts the
+slice's sha256 against the laptop's before doing anything. That doubles as a
+reproducibility check, and `experiments/phase0/compare_stats.py` quantifies it.
+
+**Pod results live in their own directory** (`out/phase1-1.4b-a100/`). Training is
+chaotic, so the same config on two GPUs diverges; mixing the two silently into one
+table would be a confound. `experiments/phase1/compare_platforms.py` measures the
+platform effect on cells run on both.
+
+**Three bootstrap traps, each one a failed launch (23 Aug 2026)**:
+
+1. `python3 -m venv .venv` hides the image's torch, so `pip install -e .` fails on the
+   torch dependency and everything after it dies with `No module named 'torch'`.
+2. `--system-site-packages` fixes that and breaks something worse: the image's
+   `torchvision` is compiled against its own torch, so installing a different torch in
+   the venv leaves an ABI mismatch, and transformers dies importing *any* model with
+   `RuntimeError: operator torchvision::nms does not exist`. The lazy-import wrapper
+   reports it as `Could not import module 'modeling_gpt_neox'`, which points nowhere;
+   `spec.loader.exec_module` on the module gives the real traceback.
+3. The fix is an **isolated venv with torch installed explicitly**, pinned to the
+   laptop's version (`torch==2.13.0+cu130`) so the only difference between platforms
+   is the GPU. The bootstrap now imports `modeling_gpt_neox` and asserts the torch
+   version before it does any work, so trap 2 cannot recur silently.
+
+Also: `git` refuses a rsync'd repo owned by another uid
+(`detected dubious ownership`); `git config --global --add safe.directory /root/lwd`
+on the pod, or runs record an empty SHA.
+
 ## Storage (local, 864 GB free on 22 Aug 2026)
 
 | item | size |

@@ -8,16 +8,28 @@ exec >>"$LOG" 2>&1
 echo "== bootstrap start $(date -u +%H:%M:%S)"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 
+# Isolated venv, with torch installed explicitly. --system-site-packages looks
+# tempting (the image ships torch) but the image's torchvision is built against that
+# torch, so installing another version in the venv breaks its ABI and transformers
+# dies on import with "operator torchvision::nms does not exist".
 if [ ! -d .venv ]; then
   python3 -m venv .venv
   . .venv/bin/activate
   pip install -q -U pip
+  # match the laptop's torch so the only difference between platforms is the GPU
+  pip install -q "torch==2.13.0+cu130" --index-url https://download.pytorch.org/whl/cu130
   pip install -q -e . --no-deps
   pip install -q "transformers>=4.45" safetensors pyyaml numpy scipy requests tokenizers huggingface_hub zstandard
 else
   . .venv/bin/activate
 fi
-python -c "import torch; assert torch.cuda.is_available(); print('torch', torch.__version__, torch.cuda.get_device_name(0), torch.cuda.device_count(), 'gpu(s)')"
+python - <<'PY'
+import torch
+from transformers.models.gpt_neox import modeling_gpt_neox  # the import that ABI breakage kills
+assert torch.cuda.is_available(), "no CUDA in the venv"
+assert torch.__version__.startswith("2.13.0"), f"torch {torch.__version__}, expected 2.13.0 to match the laptop"
+print("torch", torch.__version__, torch.cuda.get_device_name(0), torch.cuda.device_count(), "gpu(s)")
+PY
 
 # checkpoint, at pod bandwidth
 python -c "
