@@ -78,3 +78,8 @@ At Q = 1e8, stitching delta in nats: live real (1e7 distinct positions) **0.452*
 recycled anchors (0.95e6 distinct, ~100 passes) **0.450**, anchors + 91M noise
 positions 0.527, pure noise 7.92. Ten times fewer distinct tokens, same quality; added
 noise makes it worse. `docs/02` "The complete grid".
+
+Scarce anchors (23 Aug 2026): at 46 anchor sequences (94k positions) and Q = 1e8,
+anchors-only overfits (eps 0.632 at step 600 to 1.061; stitch 2.188) while
+anchors+noise converges (0.600; stitch 1.415). Noise flips from liability at 0.95M
+anchor positions to necessity at 94k. Crossover being located. `docs/02` "Scarce anchors".

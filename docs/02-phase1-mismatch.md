@@ -510,3 +510,47 @@ One weakness of criterion 3 worth recording: the eps half is a CI-upper-bound te
 and with a wide CI it passes arms that visibly diverge (G_iid's ε_inf CI upper bound
 is 0.792 against a 0.798 margin, while the arm ends at eps 11). The stitching half is
 what carries the criterion. Any restatement of G1 should lead with stitching.
+
+## Scarce anchors: where noise earns its place (23 Aug 2026)
+
+46 anchor sequences, 94k real positions per interface, Q = 1e8, against the same cells
+with the full 464 sequences (0.95M positions).
+
+| anchors | arm | eps best (step) | eps final | stitch delta |
+|---|---|---|---|---|
+| 46 (94k pos) | R, anchors only | 0.632 (600) | **1.061** | **2.188** |
+| 46 (94k pos) | C_mix, + noise | 0.593 (3600) | **0.600** | **1.415** |
+| 464 (0.95M pos) | R, anchors only | 0.412 (6103) | 0.412 | 0.450 |
+| 464 (0.95M pos) | C_mix, + noise | 0.463 (6000) | 0.463 | 0.527 |
+
+eps trajectory, 46 anchors:
+
+    R      3.10 0.63 0.68 0.73 0.80 0.85 0.91 0.97 1.01 1.05 1.06   (overfits from step 600)
+    C_mix  3.10 0.67 0.65 0.64 0.63 0.61 0.59 0.60 0.60 0.60 0.60   (converges)
+
+**The thesis holds, in the regime it was written for.** With 94k real positions the
+anchors-only student peaks at step 600 and then degrades monotonically: it is
+memorizing 46 sequences. The mixed student never turns over, ends 43% better on eps
+and 35% better on the stitching delta, and beats anchors-only even against a perfect
+early-stopping oracle (0.593 against 0.632). Noise is doing exactly what the source
+document says it does: supplying volume while the anchors pin the manifold.
+
+So the earlier reading was regime-specific, not wrong: at ~1M anchor positions noise
+is a liability (0.527 against 0.450), at ~94k it is necessary (1.415 against 2.188).
+**The crossover is between 94k and 950k positions**, and `grid-1.4b-a92` and
+`grid-1.4b-a184` are locating it.
+
+### Which regime does the plan live in?
+
+Not obviously the scarce one, and this needs stating plainly. One teacher forward pass
+over the 1e7-token slice yields activations at *every* interface at once, so with a
+resident teacher each interface can draw on 1e7 distinct real positions (the L arm).
+Scarcity binds when the activations must be *stored* rather than recomputed, which is
+exactly Tier 1 and Tier 2: `docs/00` §2.2 caps the store at 1e6 positions per
+interface for disk reasons, and at d=5120 with 16 interfaces even that is 80 GB. It
+also binds whenever the real-token budget itself is smaller than Tier 0's.
+
+The honest framing for the paper is therefore not "noise replaces data" but **"noise
+buys back the difference between storing activations and recomputing them"**, with the
+crossover measured. That is a systems claim as much as a statistical one, and it fits
+the depth-parallel story the intro already has to tell.

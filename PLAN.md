@@ -147,8 +147,8 @@ paper.
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| β too small (noise plateaus far above real) | **medium-high, and the point** | G1 kill criterion, pre-stated. Fallback is the measurement paper. |
-| Attention stages do not learn from i.i.d. noise | **high** | Sequence-structure arms are in Phase 1 proper, not a side experiment. Hybrid fallback: attention-heavy terms on anchors, MLP-heavy on noise. Say so if it happens. |
+| β too small (noise plateaus far above real) | **answered 23 Aug 2026** | β = 0.32 for live real, recycled anchors and the recipe alike, with ε_∞ consistent with zero for all three; only pure noise has a floor (0.417) and it diverges. The exponent is a property of the stage-fitting problem, not the input measure. `docs/02`. |
+| Attention stages do not learn from i.i.d. noise | **confirmed 23 Aug 2026** | Sequence-structure arms are in Phase 1 proper, not a side experiment. Hybrid fallback: attention-heavy terms on anchors, MLP-heavy on noise. Say so if it happens. |
 | "Stages in concurrent Kaggle sessions" does not exist | **certain** | Kaggle allows 2 concurrent GPU batch sessions and 1 TPU session. Stage parallelism is 2 Kaggle sessions + the laptop. Arithmetic in `docs/compute.md`; Tier 0 still fits in ~1 week. |
 | PCA width bridge discards what the next stage needs | medium | Phase 1 measures the bridge floor with a linear-probe oracle before any student is trained on it. Tier 0a exists for the case where it binds. |
 | Capacity-gap curse at 6.8x+ | medium | Tier 0a (3.4x) vs Tier 0b (6.8x) is the measurement. |
