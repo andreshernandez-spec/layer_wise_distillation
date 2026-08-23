@@ -82,8 +82,14 @@ written Tier-1/2 budget forecast. No paid compute before G1 is closed.
 > the mix at 1e8 (eps 0.413 vs 0.464), and ten passes over the 1e7 real budget beat
 > both (0.353). Noise adds nothing at ~1M anchor positions per interface; the
 > data-frugality result stands (recycled anchors beat 10x more real data seen once).
-> Running: the scarce-anchor regime (46 sequences), second seeds, 3e8 overfitting
-> test. `docs/02` has every table.
+> **Moved to a rented A100 on 23 Aug 2026** (`docs/compute.md`): the full 89-cell
+> design, the scarce-anchor cells and the 3e8 overfitting cells run there for ~$12.
+> Two GPUs reproduce eps to a median 0.00%, so laptop and pod cells read as one table.
+> **Correction the same day**: the "contract-Gaussianized" arm was affine-only and so
+> identical to the Gaussian arm (they agree to 0.01% at every shared Q); marginal
+> Gaussianization, a load-bearing claim of the source document's §1.1, is being tested
+> separately by `grid-1.4b-gauss.yaml`, read on the stitching delta because eps lives
+> in phi coordinates. `docs/02` has every table.
 
 ### Phase 2: Composition and healing → `docs/03-phase2-composition.md`
 
