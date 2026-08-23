@@ -48,10 +48,19 @@ def build_contract(st, kind: str, d_s: int | None):
     raise ValueError(kind)
 
 
-def fit_gauss_affine(contract: Contract, refs: torch.Tensor) -> Contract:
+def fit_gauss_affine(contract: Contract, refs: torch.Tensor, chunk: int = 8192) -> Contract:
+    """Whiten the Gaussianized anchors, in chunks.
+
+    The whole anchor set at d=2048 is 0.95M x 2048; one float64 copy is 15 GB and the
+    per-channel interpolation holds about six of them, so doing it in one call asks
+    for ~100 GB and the OOM killer takes the process (SIGKILL, exit -9, seen on the
+    pod 23 Aug 2026 where the 70m smoke test was far too small to expose it)."""
     from lwd.harvest.stats import MeanCov
-    y = contract.gauss.forward(refs.reshape(-1, refs.shape[-1]).double())
-    mc = MeanCov(y.shape[1]); mc.update(y); st = mc.finalize()
+    x = refs.reshape(-1, refs.shape[-1])
+    mc = MeanCov(x.shape[1])
+    for i in range(0, x.shape[0], chunk):
+        mc.update(contract.gauss.forward(x[i:i + chunk].double()))
+    st = mc.finalize()
     return Contract(contract.gauss, Affine.zca(st["mean"], st["cov_shrunk"]))
 
 

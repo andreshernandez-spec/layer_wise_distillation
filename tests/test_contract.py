@@ -125,3 +125,31 @@ def test_every_grid_arm_builds_and_draws():
         out = out[0] if isinstance(out, tuple) else out
         assert out.shape == (4, 32, 6), (arm, out.shape)
         assert torch.isfinite(out).all(), arm
+
+
+def test_fit_gauss_affine_chunking_is_exact_and_bounded():
+    """Chunked accumulation must equal the one-shot answer. The one-shot version was
+    asking for ~100 GB at d=2048 on the real anchor set and was SIGKILLed."""
+    import sys
+    sys.path.insert(0, "experiments/phase1")
+    from run import fit_gauss_affine
+    x = _heavy_tailed(n=3000, d=8)
+    q = torch.linspace(0, 1, 256, dtype=torch.float64)
+    m = MarginalGaussianize(q, torch.quantile(x, q, dim=0))
+    c = Contract(m, None)
+    refs = x.reshape(30, 100, 8)
+    a = fit_gauss_affine(c, refs, chunk=10**9)     # one shot
+    b = fit_gauss_affine(c, refs, chunk=97)        # many uneven chunks
+    np.testing.assert_allclose(a.affine.mean.numpy(), b.affine.mean.numpy(), rtol=1e-10, atol=1e-12)
+    np.testing.assert_allclose(a.affine.W.numpy(), b.affine.W.numpy(), rtol=1e-8, atol=1e-10)
+    # and the chunked path must whiten what it fitted, up to the shrinkage: the ZCA is
+    # built from cov_shrunk by design, so it deliberately under-whitens. Measured here:
+    # shrinkage 0.0014 leaves max|cov - I| = 0.014 with diagonals 0.986 to 0.995.
+    z = b.forward(x)
+    assert abs(float(z.mean())) < 1e-6
+    C = np.cov(z.numpy().T, bias=True)
+    assert np.abs(C - np.eye(8)).max() < 0.05, np.abs(C - np.eye(8)).max()
+    assert (np.abs(C.diagonal() - 1) < 0.05).all()
+    # off-diagonals are what whitening is for: they must be an order below the diagonal error
+    off = C - np.diag(C.diagonal())
+    assert np.abs(off).max() < 0.01
