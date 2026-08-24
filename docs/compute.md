@@ -155,6 +155,21 @@ because grids drain to one long cell while the rest of the card goes unused. Eit
 overlap the tail with the next piece of work or plan to delete the pod at the point
 where only one cell remains.
 
+**Verify an idle detector against a known-busy pod before trusting it.** Three
+versions of the same check were wrong in three different ways on 24 Aug 2026, and each
+one would have reported a fully loaded pod as idle:
+
+| version | pattern | why it lied |
+|---|---|---|
+| 1 | `pgrep -c ... \|\| echo 0` | prints `0` *and* exits non-zero, so the fallback emits a second field and every later field shifts; the GPU slot held a process count |
+| 2 | `pgrep -f 'lwd/experiments'` | the pattern appears in the checking shell's own command line, so the count never reached 0 and it could never fire |
+| 3 | `pgrep -f 'lwd/[e]xperiments'` | bracketed, so no self-match, but the jobs are launched with **relative** paths (`experiments/phase2/...`), so `lwd/experiments` is not in any cmdline |
+
+What works: `pgrep -u root -f '[e]xperiments/phase' | wc -l`, checked against a pod
+known to be running four jobs. **Print the actual cmdlines once** (`tr '\0' ' ' <
+/proc/PID/cmdline`) and build the pattern from them, rather than from what the launch
+command looked like.
+
 **The idle detector needs `pgrep | wc -l`, not `pgrep -c || echo 0`.** `pgrep -c`
 prints `0` *and* exits non-zero when nothing matches, so the `|| echo 0` fallback emits
 a second field, every later field shifts by one, and the GPU-utilisation slot ends up
