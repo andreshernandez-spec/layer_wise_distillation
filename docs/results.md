@@ -141,7 +141,9 @@ DAgger survives composition and does not survive healing (24 Aug 2026). Composed
 at the output falls 2.335 to 1.387, a 41% cut, which puts the noise-trained stack below
 the real-activation stack (1.473). The same stacks after healing: 9.5702 to 6.2323
 unhealed (worth 3.34 nats), 5.5692 to 5.1555 at 1e6, and 3.7221 to 3.6375 at 1e7 (worth
-0.085). The gain is being closed, not converging. `docs/06`.
+0.085). The gain is being closed, not converging. The 0.085 is inside Phase 1's 0.106-nat
+seed spread and there is one seed per cell, so the defensible statement is that after
+healing DAgger's effect is not distinguishable from zero. `docs/06`.
 
 The heal-budget curve, both arms tuned, warmup 500, teacher 1.736 nats:
 

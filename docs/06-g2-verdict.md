@@ -95,6 +95,14 @@ gain being closed rather than converging. The honest claim is conditional: DAgge
 if the composed model ships without end-to-end training, and is nearly worthless if it
 gets even 1e7 tokens.
 
+Say the 0.085 carefully: it is **smaller than the 0.106 nats of seed spread Phase 1
+measured** over 42 same-arm pairs, and there is one seed per cell here. So the correct
+statement is not "DAgger is worth 0.085 nats after healing" but **"after healing, DAgger's
+effect is not distinguishable from zero at this budget"**. That is the stronger version of
+the same conclusion, and it does not depend on a number too small to defend. A repeat on a
+second heal trajectory is queued to put a real error bar on it; until it lands, 3.338 at
+no-heal and 0.414 at 1e6 are the two figures in this table that clear the noise.
+
 ### The pattern across three independent tests
 
 G1 found that anchors, not noise, carried the result. Criterion 5 finds the anchors-only
