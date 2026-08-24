@@ -100,7 +100,14 @@ profile through downstream Lipschitz constants, DAgger-style on-policy mixing, T
 swap, heal-budget curve against random-init + equal heal.
 
 **Gate G2**: `docs/03`. Kill: healed stagewise ≤ random-init + equal heal at equal total
-FLOPs.
+FLOPs. **Four of five criteria settled 24 Aug 2026** (`docs/06-g2-verdict.md`); the kill
+criterion's equal-FLOPs cell (random init, 1.8367e8 heal tokens) is the last run. Theseus
+swap was cut: C2.2 removed its motivation and the budget went to the kill criterion.
+
+What Phase 2 found that changes the later phases: composition error **accumulates rather
+than compounds** (every stage after the first contracts what it inherits), and every
+interface-level metric so far overstates by roughly 10x what survives a modest heal.
+Phase 3's margins have to be stated on healed end-to-end loss, not on eps.
 
 ### Phase 3: Tier 0 full pipeline
 
