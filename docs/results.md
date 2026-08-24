@@ -115,3 +115,49 @@ Spectral gates, 112 students (23 Aug 2026): alpha correlates +0.80 with stitchin
 across all students, which is a training-length artefact; within a fixed budget the
 sign flips (-0.87 at 1e7, +0.84 at 1e8, no signal at 1e6). Not usable as a per-stage
 gate. `docs/02`.
+
+## Phase 2, composition and healing (24 Aug 2026, A100, SHAs 6b8f60c..33773eb)
+
+Substrate: Pythia-1.4B, six stages of four teacher blocks, 2-block same-width students
+(6.05e8 non-embedding params against 1.21e9). Teacher embedding, final norm and head
+transferred and frozen.
+
+Composition error accumulates, it does not compound. Every stage after the first
+contracts what it inherits (teacher Lipschitz 0.43 to 0.84) and adds a roughly constant
+fresh error of about 0.54. Realized drift at the output is 2.335 (C stack); the
+ratio-product prediction from stage 0's drift is 46.3 at interface 2 alone. The source
+document's compounding frame is the wrong direction for five stages out of six.
+`docs/03`, `docs/06`.
+
+Stage 0 is the hardest to fit (Jacobian cosine 0.038) because the teacher's first stage
+amplifies a perturbation 48.5x. It does not act on the composed model, since the student
+uses the teacher's embedding and interface 0 has zero drift by construction. `docs/03`.
+
+Exposure bias is most of the fresh per-stage term: on-policy retraining (DAgger, p=0.5,
+1e7 positions) cuts drifted eps 53 to 74% on stages 1 to 5, and only 8% on stage 0,
+which has no inherited drift to correct. `docs/03`.
+
+DAgger survives composition and does not survive healing (24 Aug 2026). Composed drift
+at the output falls 2.335 to 1.387, a 41% cut, which puts the noise-trained stack below
+the real-activation stack (1.473). The same stacks after healing: 9.5702 to 6.2323
+unhealed (worth 3.34 nats), 5.5692 to 5.1555 at 1e6, and 3.7221 to 3.6375 at 1e7 (worth
+0.085). The gain is being closed, not converging. `docs/06`.
+
+The heal-budget curve, both arms tuned, warmup 500, teacher 1.736 nats:
+
+| heal tokens | random | stagewise | oracle |
+|---|---|---|---|
+| 1e5 | 8.5325 | 6.9982 | 5.4803 |
+| 1e6 | 6.8356 | 5.5692 | 4.7819 |
+| 3e6 | 5.9450 | 5.0123 | 4.2673 |
+| 1e7 | 5.2693 @5e-5 | 3.7221 | 3.4850 |
+| (no heal) | 12.9942 | 9.5702 | 6.7196 |
+
+Criterion 5, the price of noise at Tier 0 scale: **+0.2371 nats** at 1e7 heal tokens
+(stagewise 3.7221, oracle 3.4850), against 2.85 nats before healing. `docs/06`.
+
+The pattern across three independent interventions (G1's anchors-vs-noise, criterion 5's
+anchors-vs-anchors+noise, criterion 3's DAgger): each is ranked clearly by an
+interface-level metric and each collapses by roughly an order of magnitude once a modest
+end-to-end budget is allowed. No claim in this project should be quoted from eps, drift
+or a stitching delta without the healed number beside it. `docs/06`.
