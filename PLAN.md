@@ -99,17 +99,21 @@ Chain noise-trained stages from Phase 1's best arm. Drift vs. depth, amplificati
 profile through downstream Lipschitz constants, DAgger-style on-policy mixing, Theseus
 swap, heal-budget curve against random-init + equal heal.
 
-**Gate G2**: `docs/03`. Kill: healed stagewise ≤ random-init + equal heal at equal total
-FLOPs. **Four of five criteria settled 24 Aug 2026** (`docs/06-g2-verdict.md`); the kill
-criterion's equal-FLOPs cell (random init, 1.8367e8 heal tokens) is the last run. Theseus
-swap was cut: C2.2 removed its motivation and the budget went to the kill criterion.
+**Gate G2**: `docs/03`. **CLOSED 24 Aug 2026, the kill criterion FIRED** (`docs/06`).
+Random init healed on 1.8367e8 tokens reaches 3.5430 against the stagewise stack's 3.7560
+(two heal trajectories) at equal end-to-end FLOPs: a 0.213-nat gap on a 0.068 spread, and
+it beats the DAgger stack too. **Phase 3 does not run.** Theseus swap was cut: C2.2 removed
+its motivation and the budget went to the kill criterion.
 
 What Phase 2 found that changes the later phases: composition error **accumulates rather
 than compounds** (every stage after the first contracts what it inherits), and every
 interface-level metric so far overstates by roughly 10x what survives a modest heal.
 Phase 3's margins have to be stated on healed end-to-end loss, not on eps.
 
-### Phase 3: Tier 0 full pipeline
+### Phase 3: Tier 0 full pipeline (NOT RUN, G2 fired)
+
+Kept below as written, because the gate's meaning depends on what it was gating.
+
 
 Pythia-2.8B (32 layers, d=2560) → Pythia-410M config (24 layers, d=1024): 8 stages of 4
 teacher / 3 student layers, 2.5x width bridge. Full contract machinery, α gates, ES for

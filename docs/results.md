@@ -163,3 +163,12 @@ anchors-vs-anchors+noise, criterion 3's DAgger): each is ranked clearly by an
 interface-level metric and each collapses by roughly an order of magnitude once a modest
 end-to-end budget is allowed. No claim in this project should be quoted from eps, drift
 or a stitching delta without the healed number beside it. `docs/06`.
+
+G2's kill criterion, 24 Aug 2026: at equal end-to-end FLOPs (6.667e17: harvest, six stage
+cells, and the stagewise arm's own 1e7 heal) a random-init student healed on 1.8367e8
+tokens reaches **3.5430** against the stagewise stack's 3.7221/3.7900 over two heal
+trajectories (mean 3.7560, spread 0.0679). Gap **-0.213 nats**, about 3x the within-arm
+spread. It also beats the DAgger stack (3.6602 mean), which cost 10% more FLOPs to build.
+The kill fired despite two handicaps applied in the stagewise arm's favour: the random arm
+recycles one 1e7-token slice 17.5 times rather than seeing distinct tokens, and runs at
+5e-5 against 1e-4 (worth ~0.2 nats). **Phase 3 does not run.** `docs/06`.
