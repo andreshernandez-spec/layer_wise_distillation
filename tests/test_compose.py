@@ -61,3 +61,27 @@ class TransformedTeacher(torch.nn.Module):
     def forward(self, z):
         from lwd.compose.chain import _phi
         return _phi(self.phi_out, self.t(_phi(self.phi_in, z, inverse=True)))
+
+
+def test_student_lm_with_teacher_stages_reproduces_the_teacher():
+    """The composed model is only as right as its plumbing. With the teacher's own
+    stages in place of students, it must give the teacher's next-token loss."""
+    import numpy as np
+    from transformers import GPTNeoXForCausalLM
+    from lwd.compose.chain import Wrapped
+    from lwd.compose.model import StudentLM
+    from lwd.contract.whiten import Affine, Contract
+    from lwd.eval.stitch import next_token_loss
+    from lwd.harvest.model import Edges, StageRunner, stage_bounds
+    ids = torch.from_numpy(np.load("out/slice/anchor_rows.npy")[:2, :65].astype(np.int64))
+    teacher = GPTNeoXForCausalLM.from_pretrained(MODEL, dtype=torch.float32,
+                                                 attn_implementation="sdpa").eval()
+    d = 512
+    eye = Contract(None, Affine(torch.zeros(d), torch.eye(d), torch.eye(d)))
+    stages = [Wrapped(StageRunner(MODEL, a, b, torch.float32), eye, eye)
+              for a, b in stage_bounds(6, 3)]
+    lm = StudentLM(Edges(MODEL, torch.float32), stages)
+    assert abs(next_token_loss(lm, ids) - next_token_loss(teacher, ids)) < 1e-4
+    with torch.no_grad():
+        ours = lm.interfaces(ids[:, :-1])
+    assert len(ours) == 4 and ours[0].shape[-1] == d

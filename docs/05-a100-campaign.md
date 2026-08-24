@@ -84,3 +84,10 @@ they need scale or run length to appear.
 - Long jobs write results incrementally and atomically, and resume.
 - Pull results continuously; verify local against remote by name before deleting.
 - Regenerate large inputs on the pod rather than uploading them.
+- **Pull the artefacts a later phase needs, not only the ones this phase reads.** The
+  110 student checkpoints (42 GB) were left on the pod because pulling them at
+  773 kB/s would have taken 15 hours, and metrics plus pod-side spectral analysis were
+  all Phase 1 needed. Phase 2 needs the *weights* to compose a student, so every stage
+  is being retrained. Pulling the handful that mattered (400 MB each, ~9 min) would
+  have cost half an hour. Decide what the next phase consumes before deleting the pod,
+  not after.
