@@ -352,3 +352,35 @@ Two changes:
 The numbers above stand for stagewise and oracle, and the ordering there is already
 informative: stagewise starts 3.4 nats better than random and stays ahead of it at
 every budget where random survived.
+
+## C2.4 with both arms tuned (24 Aug 2026)
+
+Warmup 500 for both (the probe showed the warm start wanted it too: 5.5625 against
+6.0906 at 1e6). Peak lr 1e-4 for stagewise and oracle; the cold start diverges there at
+1e7 tokens (step 1285) and was re-probed **at the length that failed**, which is the
+lesson from the first probe being run at 1e6 where everything is stable.
+
+| heal tokens | random | stagewise | oracle |
+|---|---|---|---|
+| 1e5 | 8.5325 | 6.9982 | 5.4803 |
+| 1e6 | 6.8356 | 5.5692 | 4.7819 |
+| 3e6 | 5.9450 | 5.0123 | 4.2673 |
+| 1e7 | 5.2693 @5e-5 | **3.7221** | 3.4850 |
+| (no heal) | 12.9942 | 9.5702 | 6.7196 |
+
+Cold start at 1e7: 1e-4 diverges, 3e-5 gives 5.4823, **5e-5 gives 5.2693**.
+
+**Read the 1e7 row with its handicap.** The arms are not on one schedule there: 5e-5
+costs the cold start roughly 0.2 nats relative to 1e-4 (interpolating the 1e6 probe),
+so the stagewise lead of 1.55 nats is really **about 1.3 to 1.55**. That interval cannot
+be tightened without a stable 1e-4 cold-start run, and there is not one.
+
+**Criterion 5, the stagewise-to-oracle gap, is small: 0.23 nats at 1e7** (3.7221 against
+3.4850). The anchors-only stack is barely better than anchors-plus-noise once healed,
+which matches Phase 1 at this anchor budget and says the recipe choice matters much
+less after healing than the per-stage numbers implied. Most of what separated the
+stacks before healing (9.57 against 6.72) is closed by the heal.
+
+**None of this is the kill criterion.** Every row compares arms at equal *heal tokens*,
+and the stagewise arm has already spent 6.3e17 FLOPs on its stages. The equal-FLOPs
+cell (random init, 1.74e8 tokens, 16.6 passes over the same declared slice) is running.
