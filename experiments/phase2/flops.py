@@ -19,7 +19,7 @@ TEACHER_NONEMB = {"EleutherAI/pythia-1.4b": 1.21e9, "EleutherAI/pythia-2.8b": 2.
                   "EleutherAI/pythia-70m": 1.9e7}
 
 
-def main(cfg_path):
+def main(cfg_path, a_heal_tokens=1e7):
     c = yaml.safe_load(open(cfg_path))
     from transformers import AutoConfig
     out = Path(c["out"]); S = c["n_stages"]
@@ -64,12 +64,28 @@ def main(cfg_path):
                 print(f"  {kk:34s} {vv:.3e}{unit}")
         else:
             print(f"{k:36s} {v:.3e}{unit}")
+    # G2 compares the two arms at equal FLOPs *end to end*, so the stagewise arm's own
+    # heal counts on its side of the ledger and the random arm has to be paid for it too.
+    # Reporting only tot/(6*P_s) reads as the whole budget and is short by that heal:
+    # it was, by 5.3%, in the first 1.74e8 run.
+    heal_sw = a_heal_tokens * 6 * P_s
+    end_to_end = tot + heal_sw
+    rep["stagewise_heal_tokens"] = a_heal_tokens
+    rep["stagewise_total_end_to_end"] = end_to_end
+    rep["equal_flops_tokens"] = end_to_end / (6 * P_s)
+    print(f"{'stagewise_total_end_to_end':36s} {end_to_end:.3e} FLOPs"
+          f"  (incl. its {a_heal_tokens:.0e}-token heal)")
     print("\nG2's kill criterion compares stagewise+heal against random+heal at EQUAL")
-    print("total FLOPs, so the random arm is entitled to the stagewise total as extra")
-    print("heal tokens: " + (f"{tot / (6 * P_s):.2e} tokens" if P_s else "n/a"))
+    print("total FLOPs end to end. The random arm's whole budget is")
+    print(f"  {rep['equal_flops_tokens']:.4e} tokens")
+    print(f"which is {tot / (6 * P_s):.3e} for the harvest and stages plus "
+          f"{a_heal_tokens:.0e} for the heal.")
     json.dump(rep, open(out / "flops.json", "w"), indent=1)
 
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(); p.add_argument("config")
-    main(p.parse_args().config)
+    p.add_argument("--heal-tokens", type=float, default=1e7,
+                   help="the stagewise arm's heal budget, which the random arm is also paid for")
+    a = p.parse_args()
+    main(a.config, a.heal_tokens)
