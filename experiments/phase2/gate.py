@@ -45,7 +45,7 @@ def main(cfg_path):
     print("=== the heal curve (DIAGNOSTIC, equal heal tokens: NOT the kill criterion)\n")
     print("Each cell's schedule is printed: arms tuned separately are not on the same")
     print("axis, and a comparison across different learning rates has to say so.\n")
-    cols = ["stagewise", "stagewise_dagger", "random", "oracle"]
+    cols = ["stagewise", "stagewise_dagger", "random", "random_eqflops", "oracle"]
     cols = [k for k in cols if k in heals]
     print(f"{'heal tokens':>12s} " + " ".join(f"{k:>16s}" for k in cols) + " verdict")
     budgets = sorted({t for v in heals.values() for t in v})
@@ -116,10 +116,14 @@ def main(cfg_path):
                 print("  no repeated seed on this cell: read it as a tie, not as a margin.")
 
     print("\n=== criterion 5: gap from stagewise to the oracle at the largest budget")
-    if budgets:
-        big = max(budgets)
-        sw, orc = heals.get("stagewise", {}).get(big), heals.get("oracle", {}).get(big)
+    # the largest budget where BOTH arms exist, not the largest overall: the equal-FLOPs
+    # cell is random-only and pushed max(budgets) somewhere criterion 5 cannot be read
+    shared = sorted(set(heals.get("stagewise", {})) & set(heals.get("oracle", {})))
+    if shared:
+        big = shared[-1]
+        sw, orc = heals["stagewise"][big], heals["oracle"][big]
         if sw and orc:
+            print(f"  at {big:.0e} heal tokens (the largest both arms ran):")
             print(f"  {sw['loss_after'] - orc['loss_after']:+.4f} nats "
                   f"(stagewise {sw['loss_after']:.4f}, oracle {orc['loss_after']:.4f})")
         else:
