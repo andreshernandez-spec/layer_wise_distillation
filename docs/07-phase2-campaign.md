@@ -42,10 +42,29 @@ Six, listed with their consequences in `docs/06` under "What broke". In short:
 5. The DAgger closing test overwrote three of the plain stack's result files.
 6. The equal-FLOPs budget was typed from the wrong line of the FLOPs report (5.3% short).
 
-Plus three idle-detector bugs, all in the same watchdog and none of them costing GPU
-time: `pgrep -c || echo 0` shifting a field, a pattern matching its own shell, and a
-pattern built from the launch command rather than the actual (relative-path) cmdline.
-The working form is `pgrep -u root -f '[e]xperiments/phase' | wc -l`.
+Plus four watchdog bugs, none of them costing GPU time but all of them costing attention:
+`pgrep -c || echo 0` shifting a field, a pattern matching its own shell, a pattern built
+from the launch command rather than the actual (relative-path) cmdline, and the subtlest
+one, worth writing out.
+
+A progress monitor ran a remote command whose last statement was a `grep` for failure
+signatures, and took the ssh exit status as "was the poll reachable":
+
+    pgrep -f heal.py && echo ALIVE || echo DEAD
+    tail -1 log | grep -oE "'tokens': [0-9]+"
+    grep -lE 'Traceback|under-delivered' log        # <- last statement, sets the status
+
+An ssh command exits with the status of its last remote statement. That statement exits 1
+when it finds no failure signature, which is the healthy case. So the poll registered an
+ssh failure exactly when the run was fine, and the watchdog counted down toward declaring
+the pod unreachable while the pod sat at 97% GPU.
+
+It also produced a wrong diagnosis before the right one. The failures coincided with a
+7 GB rsync, so the first explanation was bandwidth contention and the transfer was
+throttled on that theory. Timing three ssh connections (2.2 s each, consistently) killed
+that explanation and pointed at the exit status. **Measure the thing you are blaming
+before acting on the blame.** End every remote branch with `|| true` and the script with
+`exit 0`.
 
 ## What it cost
 
