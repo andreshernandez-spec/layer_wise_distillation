@@ -89,9 +89,13 @@ def main(cfg_path):
         sw = heals["stagewise"][big]
         print(f"  stagewise@{big:.0e} heal + {harvest + stage_flops:.3e} FLOPs of harvest+stages")
         print(f"  random needs {need:.4e} heal tokens to match, end to end.")
-        cand = [(t, r) for t, r in heals.get("random", {}).items() if t >= need * 0.99]
+        # any random-init cell counts, whatever tag it carries: the equal-FLOPs cell is
+        # tagged _eqflops so it cannot collide with the curve's 1e7 cell.
+        rand_all = {t: r for k, v in heals.items() if k.startswith("random")
+                    for t, r in v.items()}
+        cand = [(t, r) for t, r in rand_all.items() if t >= need * 0.99]
         if not cand:
-            have = max(heals.get("random", {}), default=0)
+            have = max(rand_all, default=0)
             print(f"  NOT RUN YET: largest random cell is {have:.4e} tokens "
                   f"({have / need - 1:+.1%} of what it is owed). Criterion 4 is not settled.")
         else:
@@ -104,6 +108,12 @@ def main(cfg_path):
                 fired.append(True)
             else:
                 print("  kill does not fire.")
+            # One seed per arm. Phase 1 measured 0.106 nats of seed spread on the
+            # stitching delta over 42 same-arm pairs; there is no repeat here, so that
+            # is the only scale available and a gap inside it is a tie, either way.
+            if abs(gap) < 0.106:
+                print(f"  but |{gap:+.4f}| is inside Phase 1's 0.106-nat seed spread and there is")
+                print("  no repeated seed on this cell: read it as a tie, not as a margin.")
 
     print("\n=== criterion 5: gap from stagewise to the oracle at the largest budget")
     if budgets:
