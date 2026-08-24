@@ -153,7 +153,8 @@ def test_a_result_file_is_never_silently_overwritten(tmp_path, monkeypatch):
     (tmp_path / "heal_random_C_t1e06_s0.json").write_text("{}")
 
     a = argparse.Namespace(config=str(cfg), init="random", measure="C", q=1e8, tokens=1e6,
-                           seed=0, eval_rows=1, lr=0.0, tag="", overwrite=False)
+                           seed=0, heal_seed=None, eval_rows=1, lr=0.0, tag="", overwrite=False,
+                           stack_suffix="")
     with pytest.raises(SystemExit, match="exists"):
         heal_cli.main(a)
     a.tag = "_dagger"                       # a tag is the way past it, not a flag to add

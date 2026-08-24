@@ -56,7 +56,9 @@ def build(c, a, dev, dt):
         stu = StudentStage(cfg, seed=a.seed + (1000 if a.init == "random" else 0))
         if a.init != "random":
             name = f"{a.measure}_{struct}_q{a.q:.0e}_s{a.seed}_stage{k}".replace("+", "")
-            ck = Path(c["out"]) / f"{name}.pt"
+            # Load a variant stack (e.g. _preDAgger) by name rather than by copying files
+            # over the promoted ones: in-place promotion is what cost three results.
+            ck = Path(c["out"]) / f"{name}{a.stack_suffix}.pt"
             stu.load_state_dict(torch.load(ck, map_location="cpu"))
             loaded[f"stage{k}"] = digest(ck)
         stages.append(Wrapped(stu.to(dev), phis[k], phis[k + 1]))
@@ -70,7 +72,9 @@ def main(a):
     c = yaml.safe_load(open(a.config))
     out = Path(c["out"]); out.mkdir(parents=True, exist_ok=True)
     dev, dt = c["device"], DT[c["dtype"]]
-    name = f"heal_{a.init}{a.tag}_{a.measure}_t{a.tokens:.0e}_s{a.seed}".replace("+", "")
+    hs = a.heal_seed if a.heal_seed is not None else a.seed
+    name = (f"heal_{a.init}{a.tag}_{a.measure}_t{a.tokens:.0e}_s{a.seed}"
+            + (f"_h{hs}" if hs != a.seed else "")).replace("+", "")
     # The stack checkpoints are promoted in place (dagger_stack.py), so the same command
     # can load a different model on a later day. A result file is a measurement, not a
     # cache entry: never overwrite one silently.
@@ -95,14 +99,14 @@ def main(a):
         warm = c.get("heal_warmup_random", 500) if a.init == "random" else c.get("heal_warmup", 50)
         globals()["_lr"], globals()["_warm"] = lr, warm
         hc = HealConfig(tokens=int(a.tokens), batch=c.get("heal_batch", 1), lr=lr, warmup=warm,
-                        seed=a.seed, eval_every=10**9, log_every=25, amp=(dev == "cuda"))
+                        seed=hs, eval_every=10**9, log_every=25, amp=(dev == "cuda"))
         print(f"heal lr={lr} warmup={warm}", flush=True)
         store = TopKStore(str(Path(c["harvest"]) / "topk"))
         hist = heal(model, store, hc, eval_fn=None, device=dev, log=lambda r: print(r, flush=True))
     after = ev(model.eval())
     sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     rec = {"name": name, "init": a.init, "tag": a.tag, "measure": a.measure,
-           "tokens": a.tokens, "seed": a.seed,
+           "tokens": a.tokens, "seed": a.seed, "heal_seed": hs,
            "lr": lr if a.tokens > 0 else None, "warmup": warm if a.tokens > 0 else None,
            "trainable_params": n_train, "loss_before": before, "loss_after": after,
            "history": hist, "sha": sha, "stage_ckpt": loaded,
@@ -117,6 +121,10 @@ if __name__ == "__main__":
     p.add_argument("--init", choices=["stagewise", "random", "oracle"], required=True)
     p.add_argument("--measure", default="C"); p.add_argument("--q", type=float, default=1e8)
     p.add_argument("--tokens", type=float, default=1e6); p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--heal-seed", type=int, default=None,
+                   help="vary the heal trajectory only; --seed still picks the stack")
+    p.add_argument("--stack-suffix", default="",
+                   help="load stage checkpoints with this suffix, e.g. _preDAgger")
     p.add_argument("--eval-rows", type=int, default=32)
     p.add_argument("--lr", type=float, default=0.0, help="override; 0 uses the config")
     p.add_argument("--tag", default="", help="suffix on the run name, e.g. _dagger")
