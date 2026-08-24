@@ -101,7 +101,8 @@ def main(a):
         hist = heal(model, store, hc, eval_fn=None, device=dev, log=lambda r: print(r, flush=True))
     after = ev(model.eval())
     sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    rec = {"name": name, "init": a.init, "measure": a.measure, "tokens": a.tokens, "seed": a.seed,
+    rec = {"name": name, "init": a.init, "tag": a.tag, "measure": a.measure,
+           "tokens": a.tokens, "seed": a.seed,
            "lr": lr if a.tokens > 0 else None, "warmup": warm if a.tokens > 0 else None,
            "trainable_params": n_train, "loss_before": before, "loss_after": after,
            "history": hist, "sha": sha, "stage_ckpt": loaded,

@@ -28,31 +28,41 @@ def main(cfg_path):
     P_t = TEACHER_NONEMB[c["model"]]
     P_s = P_t / n_layers * c["student_layers"] * S
 
+    # Key on the tag as well as the init: dagger_stack.py's re-heal is also
+    # init="stagewise" at 1e6 and 1e7, and keying on init alone silently kept
+    # whichever the glob returned last.
     heals = {}
-    for f in glob.glob(str(out / "heal_*.json")):
+    for f in sorted(glob.glob(str(out / "heal_*.json"))):
         r = json.load(open(f))
-        heals.setdefault(r["init"], {})[r["tokens"]] = r
-    print("=== criterion 4 (kill): stagewise vs random-init, held-out next-token loss\n")
+        tag = r.get("tag")
+        if tag is None:                       # older records: recover it from the name
+            stem = Path(f).stem.split("_")
+            tag = "_" + stem[2] if len(stem) > 4 and stem[2] not in ("C", "R") else ""
+        key = r["init"] + tag
+        if r["tokens"] in heals.get(key, {}):
+            raise SystemExit(f"two records for {key} at {r['tokens']:.0e}: {f}")
+        heals.setdefault(key, {})[r["tokens"]] = r
+    print("=== the heal curve (DIAGNOSTIC, equal heal tokens: NOT the kill criterion)\n")
     print("Each cell's schedule is printed: arms tuned separately are not on the same")
     print("axis, and a comparison across different learning rates has to say so.\n")
-    print(f"{'heal tokens':>12s} {'stagewise':>10s} {'random':>10s} {'oracle':>10s} {'verdict':s}")
+    cols = ["stagewise", "stagewise_dagger", "random", "oracle"]
+    cols = [k for k in cols if k in heals]
+    print(f"{'heal tokens':>12s} " + " ".join(f"{k:>16s}" for k in cols) + " verdict")
     budgets = sorted({t for v in heals.values() for t in v})
     fired = []
     for t in budgets:
         sw = heals.get("stagewise", {}).get(t)
         rd = heals.get("random", {}).get(t)
-        orc = heals.get("oracle", {}).get(t)
         row = [f"{t:12.0e}"]
-        for r in (sw, rd, orc):
+        for r in (heals[k].get(t) for k in cols):
             if r:
                 lr = r.get("lr")
-                row.append(f"{r['loss_after']:10.4f}" + (f"@{lr:.0e}" if lr else ""))
+                cell = f"{r['loss_after']:.4f}" + (f"@{lr:.0e}" if lr else "")
+                row.append(f"{cell:>16s}")
             else:
-                row.append(f"{'-':>10s}")
+                row.append(f"{'-':>16s}")
         if sw and rd:
-            ok = sw["loss_after"] < rd["loss_after"]
-            row.append("stagewise better" if ok else "KILL: random is at least as good")
-            fired.append(not ok)
+            row.append("stagewise better" if sw["loss_after"] < rd["loss_after"] else "random at least as good")
         print(" ".join(row))
 
     # equal-FLOPs entitlement
@@ -69,11 +79,31 @@ def main(cfg_path):
     extra = (harvest + stage_flops) / (6 * P_s)
     print(f"\nstagewise ({arm}, {n_stage_cells} stage cells) spent {harvest + stage_flops:.2e} FLOPs before healing;")
     print(f"at equal total FLOPs the random arm is entitled to {extra:.2e} extra heal tokens.")
-    if budgets:
-        big = max(budgets)
-        print(f"So the honest comparison is stagewise@{big:.0e} against random@{big + extra:.2e}.")
-        if not any(t >= big + extra for t in heals.get("random", {})):
-            print("  NOT RUN YET: that random cell is missing, so criterion 4 is not settled.")
+    print("\n=== criterion 4 (KILL): stagewise+heal vs random+heal at equal total FLOPs\n")
+    sw_budgets = sorted(heals.get("stagewise", {}))
+    if not sw_budgets:
+        print("  no stagewise cell, criterion 4 not settled.")
+    else:
+        big = max(sw_budgets)
+        need = big + extra
+        sw = heals["stagewise"][big]
+        print(f"  stagewise@{big:.0e} heal + {harvest + stage_flops:.3e} FLOPs of harvest+stages")
+        print(f"  random needs {need:.4e} heal tokens to match, end to end.")
+        cand = [(t, r) for t, r in heals.get("random", {}).items() if t >= need * 0.99]
+        if not cand:
+            have = max(heals.get("random", {}), default=0)
+            print(f"  NOT RUN YET: largest random cell is {have:.4e} tokens "
+                  f"({have / need - 1:+.1%} of what it is owed). Criterion 4 is not settled.")
+        else:
+            t, rd = min(cand)
+            gap = rd["loss_after"] - sw["loss_after"]
+            print(f"  random@{t:.4e} = {rd['loss_after']:.4f}   stagewise@{big:.0e} = {sw['loss_after']:.4f}")
+            print(f"  gap {gap:+.4f} nats (positive means the stagewise init is worth something)")
+            if gap <= 0:
+                print("  *** KILL FIRES: random init at equal FLOPs is at least as good. ***")
+                fired.append(True)
+            else:
+                print("  kill does not fire.")
 
     print("\n=== criterion 5: gap from stagewise to the oracle at the largest budget")
     if budgets:
