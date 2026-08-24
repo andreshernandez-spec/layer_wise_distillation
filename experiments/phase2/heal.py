@@ -68,13 +68,14 @@ def main(a):
         return next_token_loss(m, ids, batch=1)
 
     before = ev(model.eval())
-    hist = []
+    hist, lr, warm = [], None, None
     if a.tokens > 0:
         # A cold start needs a gentler schedule than a warm one. Using the same lr for
         # both does not compare stagewise against random init, it compares a tuned
         # learning rate against an untuned one.
         lr = a.lr if a.lr else c.get("heal_lr_random" if a.init == "random" else "heal_lr", 1e-4)
         warm = c.get("heal_warmup_random", 500) if a.init == "random" else c.get("heal_warmup", 50)
+        globals()["_lr"], globals()["_warm"] = lr, warm
         hc = HealConfig(tokens=int(a.tokens), batch=c.get("heal_batch", 1), lr=lr, warmup=warm,
                         seed=a.seed, eval_every=10**9, log_every=25, amp=(dev == "cuda"))
         print(f"heal lr={lr} warmup={warm}", flush=True)
@@ -83,6 +84,7 @@ def main(a):
     after = ev(model.eval())
     sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     rec = {"name": name, "init": a.init, "measure": a.measure, "tokens": a.tokens, "seed": a.seed,
+           "lr": lr if a.tokens > 0 else None, "warmup": warm if a.tokens > 0 else None,
            "trainable_params": n_train, "loss_before": before, "loss_after": after,
            "history": hist, "sha": sha, "device": torch.cuda.get_device_name(0) if dev == "cuda" else "cpu"}
     json.dump(rec, open(out / f"{name}.json", "w"))

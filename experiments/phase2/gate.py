@@ -33,6 +33,8 @@ def main(cfg_path):
         r = json.load(open(f))
         heals.setdefault(r["init"], {})[r["tokens"]] = r
     print("=== criterion 4 (kill): stagewise vs random-init, held-out next-token loss\n")
+    print("Each cell's schedule is printed: arms tuned separately are not on the same")
+    print("axis, and a comparison across different learning rates has to say so.\n")
     print(f"{'heal tokens':>12s} {'stagewise':>10s} {'random':>10s} {'oracle':>10s} {'verdict':s}")
     budgets = sorted({t for v in heals.values() for t in v})
     fired = []
@@ -42,7 +44,11 @@ def main(cfg_path):
         orc = heals.get("oracle", {}).get(t)
         row = [f"{t:12.0e}"]
         for r in (sw, rd, orc):
-            row.append(f"{r['loss_after']:10.4f}" if r else f"{'-':>10s}")
+            if r:
+                lr = r.get("lr")
+                row.append(f"{r['loss_after']:10.4f}" + (f"@{lr:.0e}" if lr else ""))
+            else:
+                row.append(f"{'-':>10s}")
         if sw and rd:
             ok = sw["loss_after"] < rd["loss_after"]
             row.append("stagewise better" if ok else "KILL: random is at least as good")
