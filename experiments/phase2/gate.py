@@ -38,7 +38,11 @@ def main(cfg_path):
         if tag is None:                       # older records: recover it from the name
             stem = Path(f).stem.split("_")
             tag = "_" + stem[2] if len(stem) > 4 and stem[2] not in ("C", "R") else ""
+        # a repeat on a second heal trajectory is the same arm, not a duplicate cell
+        hs = r.get("heal_seed", r["seed"])
         key = r["init"] + tag
+        if hs != r["seed"]:
+            key += f"_h{hs}"
         if r["tokens"] in heals.get(key, {}):
             raise SystemExit(f"two records for {key} at {r['tokens']:.0e}: {f}")
         heals.setdefault(key, {})[r["tokens"]] = r
@@ -111,6 +115,16 @@ def main(cfg_path):
             # One seed per arm. Phase 1 measured 0.106 nats of seed spread on the
             # stitching delta over 42 same-arm pairs; there is no repeat here, so that
             # is the only scale available and a gap inside it is a tie, either way.
+            # if the stagewise arm has repeats, the comparison should use their mean
+            reps = [v[big]["loss_after"] for k, v in heals.items()
+                    if k.startswith("stagewise_h") and big in v]
+            if reps:
+                vals = [sw["loss_after"]] + reps
+                m = sum(vals) / len(vals)
+                print(f"  stagewise over {len(vals)} heal trajectories: "
+                      + ", ".join(f"{v:.4f}" for v in vals)
+                      + f" -> mean {m:.4f}, spread {max(vals) - min(vals):.4f}")
+                print(f"  gap against the mean: {rd['loss_after'] - m:+.4f} nats")
             if abs(gap) < 0.106:
                 print(f"  but |{gap:+.4f}| is inside Phase 1's 0.106-nat seed spread and there is")
                 print("  no repeated seed on this cell: read it as a tie, not as a margin.")
@@ -138,6 +152,16 @@ def main(cfg_path):
             print(f"     lipschitz {' '.join(f'{x:.2f}' for x in d['lipschitz'])}")
         else:
             print(f"  {m}: pending")
+
+    print("\n=== repeats: same cell, second heal trajectory")
+    for base in sorted(k for k in heals if not k.endswith(tuple(f"_h{i}" for i in range(1, 9)))):
+        for t, r0 in sorted(heals[base].items()):
+            reps = [v[t]["loss_after"] for k, v in heals.items()
+                    if k.startswith(base + "_h") and t in v]
+            if reps:
+                vals = [r0["loss_after"]] + reps
+                print(f"  {base:22s} @{t:.0e}: " + ", ".join(f"{v:.4f}" for v in vals)
+                      + f"   spread {max(vals) - min(vals):.4f}")
 
     print("\n=== criterion 3: mitigations")
     dg = sorted(glob.glob(str(out / "dagger_*.json")))
