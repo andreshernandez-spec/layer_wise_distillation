@@ -238,3 +238,22 @@ finding above that stage 0 is the hardest to fit and has a near-orthogonal Jacob
 which distils the embedding, or which feeds noise at interface 0, inherits a 48x
 sensitivity. The source document's instinct in §1.3 (start noise after the first
 block) is right, and this is the number behind it.
+
+### C2.3 is built and has a stated prediction
+
+`src/lwd/compose/dagger.py` and `experiments/phase2/dagger.py`. Stage k is retrained on
+anchors propagated through the trained stages below it, at a configurable on-policy
+fraction, with the target unchanged (the teacher stage applied to the same input): only
+the input distribution moves.
+
+It reports **both** numbers, because they answer different questions:
+
+- **eps on the drifted interface**, the one the stage actually meets in the composed
+  model, is what DAgger targets;
+- **eps on the teacher's clean interface** is the control, and says what the shift cost.
+
+The C2.2 decomposition makes this a test rather than a demonstration. Each stage adds
+~0.54 of fresh error. If exposure bias is most of it, retraining on the drifted
+interface should cut drifted eps sharply. If it barely moves, the fresh term is
+irreducible stage error, DAgger is not the lever, and the route to a better composed
+model is better stages. Write the prediction down before running it on the 1.4B.
