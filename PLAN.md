@@ -68,8 +68,10 @@ AR(1), anchor-mixed), evaluated on held-out **real** activations and by **stitch
 student stage into the teacher. Fit β and ε_∞ per arm. Measure the PCA-bridge floor
 separately from the measure-mismatch floor.
 
-**Gate G1**: five numbered criteria in `docs/02`, including the kill criterion and the
-written Tier-1/2 budget forecast. No paid compute before G1 is closed.
+**Gate G1**: five numbered criteria in `docs/02`. **CLOSED as a pass, 23 Aug 2026**,
+on margins accepted unchanged from the pre-registration and restated to lead on the
+stitching delta: reference 1.000 nats, margin 1.999, recipe arm 0.407 at its largest
+budget. Verdict, and what the pass does and does not mean: `docs/04`.
 
 > **Status 22 Aug 2026, one seed, Pythia-1.4B stage 2.** Phase 0 closed the same day
 > (G0.3 passes 5 of 6 stages, marginal fail at the last; `docs/01`). Phase 1 cells
@@ -160,10 +162,25 @@ paper.
 | Crowded niche (synthetic-data distillation) | medium | Two named baselines at Tier 0: Puzzle-style blockwise KD on real activations (2411.19146) at matched real tokens, and self-generated-text KD at matched compute. The intro answers "why not just use data" with those numbers plus the depth-parallel and data-egress story. `docs/00-literature.md`. |
 | Scope creep into Phase 5 (Mamba interfaces) | medium | Nothing Mamba-related before G3. |
 
-## Decisions Andres owns (see `docs/00-plan-review.md` §3)
+## Decisions (all settled; see `docs/00-plan-review.md` §3 for the reasoning)
 
-1. What a "noise sample" is: a position or a sequence. The FLOPs clause of Claim A
-   flips on this.
-2. Anchors per interface: 10^6 (storage-driven) or 10^7 (the source doc says both).
-3. Substrate for Phase 1: Pythia-1.4B (recommended) or SmolLM2-1.7B.
-4. The G1 kill margin (a proposal is in `docs/02`).
+1. **A noise sample is a position**, not a sequence. Used throughout; Claim A's FLOPs
+   clause then holds by ~900x at Tier 0, and would have failed under the other reading.
+2. **10^6 anchor positions per interface** (512 sequences of 2048), a different subset
+   per interface. Settled on storage grounds and vindicated by measurement: the
+   anchor-budget crossover sits at ~250k positions, so 10^6 is comfortably in the
+   regime where a stage does not need noise to avoid over-fitting from scarcity,
+   though it still needs it to train long (`docs/02`).
+3. **Pythia-1.4B, stage 2** as the Phase 1 substrate, with Pythia-410M as the Tier 0
+   comparator. Both harvested and evaluated; `docs/results.md`.
+4. **G1 margins accepted 23 Aug 2026**, unchanged from the pre-registration and
+   restated to lead on the stitching delta. `docs/02` "G1: closed".
+5. **Pile source**: `EleutherAI/pile-standard-pythia-preshuffled`, the exact token
+   stream the standard Pythia models trained on, addressed by step index and pinned by
+   sha256 (`docs/01` C0.1).
+
+Still open, and Phase 3's to answer, not Phase 1's:
+
+6. **The self-generated-text baseline** (LLM-QAT style, `docs/00-literature.md` C4).
+   It is what a reviewer will propose instead of this whole approach, and it should be
+   run at Tier 0 at matched compute or explicitly argued away.
