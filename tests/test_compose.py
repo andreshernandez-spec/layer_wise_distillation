@@ -85,3 +85,39 @@ def test_student_lm_with_teacher_stages_reproduces_the_teacher():
     with torch.no_grad():
         ours = lm.interfaces(ids[:, :-1])
     assert len(ours) == 4 and ours[0].shape[-1] == d
+
+
+def test_dagger_sampler_moves_the_input_distribution_not_the_target():
+    """With zero trained stages below it, propagation must equal the teacher's own
+    interface; with a stage below, it must differ. And on_policy must control the mix."""
+    import numpy as np
+    from lwd.compose.chain import Wrapped
+    from lwd.compose.dagger import PropagatedSampler
+    from lwd.contract.whiten import Affine, Contract
+    from lwd.harvest.model import Lower
+    from lwd.stage.student import StudentStage, student_config
+    rows = np.load("out/slice/anchor_rows.npy")[:8]
+    d = 512
+    eye = Contract(None, Affine(torch.zeros(d), torch.eye(d), torch.eye(d)))
+    low0 = Lower(MODEL, 0, torch.float32)
+    g = torch.Generator().manual_seed(0)
+    # no stages below: the student's interface 0 IS the teacher's
+    s0 = PropagatedSampler(rows, low0, [], low0, on_policy=1.0)
+    a = s0.sample(2, 32, g)
+    g2 = torch.Generator().manual_seed(0)
+    b = PropagatedSampler(rows, low0, [], low0, on_policy=0.0).sample(2, 32, g2)
+    assert torch.allclose(a, b, atol=1e-5), "with nothing below it, propagation is the teacher"
+    # one untrained student stage below: the distribution must move
+    stu = StudentStage(student_config(MODEL, d, 1, 8), seed=0)
+    low1 = Lower(MODEL, 2, torch.float32)
+    s1 = PropagatedSampler(rows, low0, [Wrapped(stu, eye, eye)], low1, on_policy=1.0)
+    g3 = torch.Generator().manual_seed(0)
+    on = s1.sample(2, 32, g3)
+    g4 = torch.Generator().manual_seed(0)
+    off = PropagatedSampler(rows, low0, [Wrapped(stu, eye, eye)], low1, on_policy=0.0).sample(2, 32, g4)
+    assert on.shape == off.shape
+    assert not torch.allclose(on, off, atol=1e-2), "on-policy inputs should differ from the teacher's"
+    # a mixed batch takes half from each
+    g5 = torch.Generator().manual_seed(0)
+    mix = PropagatedSampler(rows, low0, [Wrapped(stu, eye, eye)], low1, on_policy=0.5).sample(2, 32, g5)
+    assert torch.allclose(mix[:1], on[:1], atol=1e-4) and torch.allclose(mix[1:], off[1:], atol=1e-4)
