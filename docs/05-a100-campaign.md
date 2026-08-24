@@ -13,7 +13,11 @@ is the record the tree's rules ask for: platform, commits, cost, and every incid
 | stack | isolated venv, `torch 2.13.0+cu130` (pinned to match the laptop), transformers 5.15.1, Python 3.12.3 |
 | code | rsync of the working tree plus `.git`; SHAs `1e7a6b9` through `d5d28c0`, clean tree at every launch |
 | **uptime** | **~13.5 h** |
-| **cost** | **$18.95** ($18.67 GPU + $0.28 disk), reconciled against `get-billing` |
+| **cost** | **$20.31** ($20.01 GPU + $0.30 disk), final |
+
+The figure first recorded here was $18.95, read from `get-billing` in the minutes after
+the pod was deleted. The last bucket had not landed yet. Reconcile a pod's bill the day
+after, not the moment it stops: the shortfall was 7%.
 
 ## What it produced
 
