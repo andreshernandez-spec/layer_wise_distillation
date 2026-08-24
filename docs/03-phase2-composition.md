@@ -155,3 +155,35 @@ predicting the mean, so their inputs are far off-manifold and the contraction ma
 saturation rather than anything about composition. The 1.4B stack, whose stages reach
 eps ~0.5, is the test. What the smoke run does establish is that the driver measures
 both quantities and that they can be read against each other.
+
+## Stage difficulty by depth (24 Aug 2026, R stack, 1e8 positions each)
+
+| stage | blocks | eps | stitch | Jacobian cos | teacher attn entropy on real inputs |
+|---|---|---|---|---|---|
+| 0 | 0-3 | **0.524** | **0.724** | **0.038** | 3.92 |
+| 1 | 4-7 | 0.477 | 0.415 | 0.273 | 1.97 |
+| 2 | 8-11 | 0.413 | 0.506 | 0.328 | 2.75 |
+| 3 | 12-15 | 0.348 | **0.760** | 0.347 | 2.48 |
+| 4 | 16-19 | 0.309 | 0.543 | 0.291 | 1.41 |
+
+Three things, on one arm and one seed, so read them as the shape of the problem rather
+than as settled numbers.
+
+**1. Deeper stages are easier to fit.** eps falls monotonically with depth, 0.524 to
+0.309, on identical budgets and identical student capacity. The residual stream gets
+more predictable from its own previous layer as depth grows.
+
+**2. Stage 0 is the hard one, and it fails differently.** It has the worst eps, the
+second-worst stitching delta, and a **Jacobian cosine of 0.038**: its input-output
+Jacobian is very nearly orthogonal to the teacher's. It is matching outputs on the data
+it was shown while behaving like a different function locally. Every other stage sits
+at 0.27 to 0.35. That is what the source document anticipated structurally when §1.3
+said interface 0 is discrete tokens and noise should start after the first block, and
+it is now measured: the embedding output is not a residual stream and stage 0 should
+not be treated like the others. It also predicts stage 0 will dominate composition
+drift, which C2.2 will show directly.
+
+**3. Stitching does not track eps across stages either.** Stage 3 has the second-best
+eps and the worst stitching delta. This is the same divergence Phase 1 found across
+training length (`docs/02`), now visible across depth, and it is another reason the
+per-stage acceptance signal has to be the stitching delta.
