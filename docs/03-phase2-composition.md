@@ -305,3 +305,39 @@ without the composed model improving. The honest test is whether a stack whose s
 were all retrained this way composes to a lower loss, and that is one cheap run: six
 retrains at 1e7 positions each, in order, then recompose and measure. Queued.
 
+
+## C2.4 first attempt, and why its baseline was invalid (24 Aug 2026)
+
+Held-out next-token loss after healing (teacher 1.736 nats), first run:
+
+| heal tokens | random | stagewise | oracle |
+|---|---|---|---|
+| 1e5 | 7.9352 | 7.5202 | 5.8450 |
+| 1e6 | 7.6615 | 6.0165 | 5.2219 |
+| 3e6 | **nan** | 5.3214 | 4.5842 |
+| 1e7 | **nan** | 3.8309 | 3.5367 |
+| (before healing) | 12.9942 | 9.5702 | 6.7196 |
+
+**The random arm diverged**, at step ~380 in both cases, and then skipped 4476 of 4883
+steps: 90% of its budget spent on nothing, reported as a NaN loss. The stagewise arm
+at the identical learning rate skipped zero steps.
+
+That is not a result about stagewise initialization. It is a result about learning
+rates: **1e-4 suits a warm start and destroys a cold one**, so the comparison as run
+pitted a tuned schedule against an untuned one. G2's kill criterion is precisely the
+claim "stagewise beats random init", and it cannot be settled with a baseline that was
+never given a working configuration. The equal-FLOPs cell then inherited the same
+setting and was killed 12 minutes in, before it wasted 2.2 hours.
+
+Two changes:
+
+1. **The heal aborts after 50 consecutive skipped steps** with a message naming the
+   cause. The non-finite guard from Phase 1 stops bad weights getting worse but cannot
+   repair them, so without an abort a diverged run silently burns its whole budget.
+2. **The cold-start arm gets its own learning rate and warmup**, chosen by a short
+   probe (1e6 tokens at 1e-5, 3e-5, 1e-4) rather than assumed. Fair baselines are part
+   of the criterion, not an optimization.
+
+The numbers above stand for stagewise and oracle, and the ordering there is already
+informative: stagewise starts 3.4 nats better than random and stays ahead of it at
+every budget where random survived.
