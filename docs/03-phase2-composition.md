@@ -322,9 +322,20 @@ Held-out next-token loss after healing (teacher 1.736 nats), first run:
 steps: 90% of its budget spent on nothing, reported as a NaN loss. The stagewise arm
 at the identical learning rate skipped zero steps.
 
-That is not a result about stagewise initialization. It is a result about learning
-rates: **1e-4 suits a warm start and destroys a cold one**, so the comparison as run
-pitted a tuned schedule against an untuned one. G2's kill criterion is precisely the
+That is not a result about stagewise initialization, it is a result about the
+schedule. **Corrected by the probe below: the cause was the warmup, not the peak
+learning rate.** With 500 warmup steps instead of 50, lr 1e-4 is stable on the cold
+start and is also the best of the three probed:
+
+| lr (cold start, 1e6 tokens, warmup 500) | loss after | skipped |
+|---|---|---|
+| 1e-5 | 7.5521 | 0/489 |
+| 3e-5 | 7.2122 | 0/489 |
+| **1e-4** | **6.8339** | 0/489 |
+
+So the two arms can share a peak learning rate after all; what a cold start needs is a
+longer ramp to it. Either way the comparison as first run pitted a schedule that
+suited one arm against one that did not. G2's kill criterion is precisely the
 claim "stagewise beats random init", and it cannot be settled with a baseline that was
 never given a working configuration. The equal-FLOPs cell then inherited the same
 setting and was killed 12 minutes in, before it wasted 2.2 hours.
