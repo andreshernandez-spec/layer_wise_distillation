@@ -187,3 +187,54 @@ drift, which C2.2 will show directly.
 eps and the worst stitching delta. This is the same divergence Phase 1 found across
 training length (`docs/02`), now visible across depth, and it is another reason the
 per-stage acceptance signal has to be the stitching delta.
+
+## C2.2 on the 1.4B: composition error accumulates, it does not compound (24 Aug 2026)
+
+R stack, six stages at 1e8 positions each, drift measured in whitened coordinates on
+held-out real text (`experiments/phase2/drift.py`, `drift_R.json`).
+
+| stage | drift in | teacher Lipschitz | inherited | realized out | fresh |
+|---|---|---|---|---|---|
+| 0 | 0.000 | **48.5** | 0.000 | 0.510 | 0.510 |
+| 1 | 0.510 | 0.454 | 0.232 | 0.776 | 0.544 |
+| 2 | 0.776 | 0.448 | 0.348 | 0.935 | 0.587 |
+| 3 | 0.935 | 0.500 | 0.467 | 1.097 | 0.630 |
+| 4 | 1.097 | 0.841 | 0.923 | 1.301 | 0.378 |
+| 5 | 1.301 | 0.753 | 0.980 | 1.535 | 0.556 |
+
+("inherited" is the drift the stage receives times the teacher stage's measured
+Lipschitz ratio at that drift magnitude; "fresh" is what the student stage adds on top.)
+
+**Every stage after the first contracts** the error it inherits, by a factor of 0.45 to
+0.84. Drift still grows, 0.510 to 1.535, because each stage contributes **fresh error
+of about 0.54, essentially constant with depth**. Composition error here is a sum, not
+a product.
+
+### This changes what the mitigations are for
+
+Source document §1.6 frames composition as imitation-learning compounding: "per-stage
+error amplifies through downstream Lipschitz constants". On this model that is the
+wrong direction for five stages out of six. If drift were inherited and amplified,
+contracting stages would shrink it; instead the accumulation is additive and dominated
+by what each stage adds.
+
+So DAgger and Theseus (C2.3) should be justified and measured as **ways to reduce the
+fresh per-stage term under realistic inputs**, not as ways to stop amplification. That
+is still a live and sensible motivation: the fresh term includes exposure bias, since
+each stage was trained on the teacher's clean interface and is being evaluated on a
+drifted one. But the prediction changes. If exposure bias is most of the fresh term,
+DAgger should cut it sharply; if the fresh term is mostly irreducible stage error, it
+will barely move, and the way to a better composed model is better stages rather than
+better propagation. **C2.3 now has a sharp prediction to test rather than an assumed
+mechanism to demonstrate.**
+
+### The 48.5x at stage 0 is measured but does not act
+
+The teacher's first stage amplifies a perturbation 48.5x, far out of line with every
+other stage. It does not contribute here, because the student uses the teacher's
+embedding, so interface 0 has zero drift by construction. What it does explain is the
+finding above that stage 0 is the hardest to fit and has a near-orthogonal Jacobian
+(0.038): it is approximating a strongly expansive map. It also warns that any variant
+which distils the embedding, or which feeds noise at interface 0, inherits a 48x
+sensitivity. The source document's instinct in §1.3 (start noise after the first
+block) is right, and this is the number behind it.
