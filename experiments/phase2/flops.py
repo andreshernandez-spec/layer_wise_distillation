@@ -30,10 +30,19 @@ def main(cfg_path):
     stage_s = per_layer * c["student_layers"]          # one student stage
     P_s = stage_s * S                                  # the whole student's blocks
     rep = {"student_nonemb_params": P_s, "teacher_nonemb_params": P_t}
-    # `*_stage*` also matches heal_stagewise_*, so anchor on the digit
-    for tag, pat in (("stages", "*_stage[0-9]*.json"), ("heal", "heal_*.json")):
-        rows = [json.load(open(f)) for f in glob.glob(str(out / pat))]
+    # `*_stage*` also matches heal_stagewise_* and dagger_C_stage0_*, so pin the
+    # whole stage-cell shape: measure_structure_q..._s..._stageK. Counting a DAgger
+    # retrain here would inflate the stagewise budget 10% and hand the random arm
+    # tokens the plain stack never spent.
+    for tag, pat in (("stages", "*_q[0-9]*_s[0-9]*_stage[0-9].json"), ("heal", "heal_*.json")):
+        files = sorted(glob.glob(str(out / pat)))
+        rows = [json.load(open(f)) for f in files]
         if tag == "stages":
+            bad = [f for f, r in zip(files, rows) if "measure" not in r or "q" not in r]
+            if bad:
+                raise SystemExit(f"not stage cells: {bad}")
+            if len(rows) != S:
+                raise SystemExit(f"expected {S} stage cells, found {len(rows)}: {files}")
             # per position: teacher stage forward (2P) + student fwd+bwd (6P)
             per = 2 * stage_t + 6 * stage_s
             by = {}
