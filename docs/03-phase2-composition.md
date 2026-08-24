@@ -257,3 +257,34 @@ The C2.2 decomposition makes this a test rather than a demonstration. Each stage
 interface should cut drifted eps sharply. If it barely moves, the fresh term is
 irreducible stage error, DAgger is not the lever, and the route to a better composed
 model is better stages. Write the prediction down before running it on the 1.4B.
+
+## C2.3: exposure bias is most of the fresh per-stage error (24 Aug 2026)
+
+The prediction written above, before the run: a large drop in drifted eps means
+exposure bias dominates the fresh term and DAgger is the mitigation; a small drop
+means the fresh term is irreducible stage error and better stages, not better
+propagation, is the route.
+
+First cell, stage 1 of the C_mix stack, retrained at 1e7 positions with half the batch
+propagated through the trained stages below it:
+
+| | before | after |
+|---|---|---|
+| eps on the **drifted** interface it actually meets | 1.3577 | **0.5188** |
+| eps on the teacher's clean interface (the control) | 0.5670 | 0.5346 |
+
+Two things worth separating.
+
+**The exposure-bias gap is large and was invisible until measured.** Before retraining,
+the stage scores 0.567 on the interface it was trained on and 1.358 on the interface it
+actually meets: it is **2.4x worse in deployment than its own training metric says**.
+Every per-stage number in Phase 1 and in the depth table above is a clean-interface
+number, so all of them flatter the composed model.
+
+**DAgger removes most of that gap, and costs nothing.** Drifted eps falls 62%, and
+clean eps *also* improves slightly rather than trading off. After retraining the stage
+is better on drifted inputs (0.519) than it ever was on clean ones (0.567).
+
+So the answer is the first branch of the prediction: **exposure bias is most of the
+fresh per-stage error**, and it is cheap to remove. Two more stages are running before
+this is stated as the phase's result rather than one cell's.
