@@ -20,3 +20,6 @@ out: out/phase2-1.4b
 heldout: out/heldout/heldout_rows.npy
 heal_batch: 1
 heal_lr: 1.0e-4
+heal_lr_random: 3.0e-5
+heal_warmup_random: 500
+heal_warmup: 50

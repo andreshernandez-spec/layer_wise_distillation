@@ -70,8 +70,14 @@ def main(a):
     before = ev(model.eval())
     hist = []
     if a.tokens > 0:
-        hc = HealConfig(tokens=int(a.tokens), batch=c.get("heal_batch", 1), lr=c.get("heal_lr", 1e-4),
+        # A cold start needs a gentler schedule than a warm one. Using the same lr for
+        # both does not compare stagewise against random init, it compares a tuned
+        # learning rate against an untuned one.
+        lr = a.lr if a.lr else c.get("heal_lr_random" if a.init == "random" else "heal_lr", 1e-4)
+        warm = c.get("heal_warmup_random", 500) if a.init == "random" else c.get("heal_warmup", 50)
+        hc = HealConfig(tokens=int(a.tokens), batch=c.get("heal_batch", 1), lr=lr, warmup=warm,
                         seed=a.seed, eval_every=10**9, log_every=25, amp=(dev == "cuda"))
+        print(f"heal lr={lr} warmup={warm}", flush=True)
         store = TopKStore(str(Path(c["harvest"]) / "topk"))
         hist = heal(model, store, hc, eval_fn=None, device=dev, log=lambda r: print(r, flush=True))
     after = ev(model.eval())
@@ -90,4 +96,5 @@ if __name__ == "__main__":
     p.add_argument("--measure", default="C"); p.add_argument("--q", type=float, default=1e8)
     p.add_argument("--tokens", type=float, default=1e6); p.add_argument("--seed", type=int, default=0)
     p.add_argument("--eval-rows", type=int, default=32)
+    p.add_argument("--lr", type=float, default=0.0, help="override; 0 uses the config")
     main(p.parse_args())

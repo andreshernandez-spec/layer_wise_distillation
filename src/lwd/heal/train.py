@@ -30,6 +30,7 @@ class HealConfig:
     log_every: int = 20
     amp: bool = True
     seed: int = 0
+    abort_after_skips: int = 50
 
 
 def kd_and_ce(logits: torch.Tensor, tk_ids: torch.Tensor, tk_logp: torch.Tensor,
@@ -99,7 +100,7 @@ def heal(model, store: TopKStore, cfg: HealConfig, eval_fn=None, device="cpu", l
     steps = max(1, cfg.tokens // (cfg.batch * 2048))
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min(1.0, (s + 1) / cfg.warmup) * 0.5 * (1 + math.cos(math.pi * min(1.0, s / steps))))
-    hist, t0, seen, skipped = [], time.time(), 0, 0
+    hist, t0, seen, skipped, consec = [], time.time(), 0, 0, 0
     for step, (tok, ids, logp) in enumerate(store.batches(cfg.batch, cfg.tokens, cfg.seed)):
         tok, ids, logp = tok.to(device), ids.to(device), logp.to(device)
         with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=cfg.amp and device != "cpu"):
@@ -111,8 +112,18 @@ def heal(model, store: TopKStore, cfg: HealConfig, eval_fn=None, device="cpu", l
         gn = torch.nn.utils.clip_grad_norm_(params, cfg.grad_clip)
         if torch.isfinite(loss) and torch.isfinite(gn):   # docs/02: one NaN poisons a run
             opt.step()
+            consec = 0
         else:
             skipped += 1
+            consec += 1
+            if consec >= cfg.abort_after_skips:
+                # the weights are already non-finite: the guard stops them getting
+                # worse but cannot repair them, and every later step is wasted. A
+                # random-init heal at lr 1e-4 diverged at step ~380 and then skipped
+                # 4476 of 4883 steps, spending 90% of its budget on nothing.
+                raise RuntimeError(
+                    f"heal diverged: {consec} consecutive non-finite steps from step "
+                    f"{step - consec + 1}. Lower the learning rate or lengthen warmup.")
         sched.step()
         seen += tok.numel()
         rec = {"step": step, "kd": float(kd), "ce": float(ce), "tokens": seen,

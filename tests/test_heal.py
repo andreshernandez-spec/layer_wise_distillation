@@ -86,3 +86,35 @@ def test_an_empty_topk_store_fails_loudly(tmp_path):
     from lwd.heal.train import TopKStore
     with pytest.raises(FileNotFoundError, match="no top-k chunks"):
         TopKStore(str(tmp_path / "empty"))
+
+
+def test_a_diverged_heal_aborts_instead_of_burning_its_budget():
+    """The guard stops non-finite weights getting worse; it cannot repair them. Without
+    an abort a diverged run skips the rest of its budget and reports a NaN loss after
+    spending every token."""
+    import torch
+
+    from lwd.heal.train import HealConfig, heal
+
+    class Poison:
+        def batches(self, batch, max_tokens, seed=0):
+            for _ in range(500):
+                yield (torch.zeros(1, 8, dtype=torch.long),
+                       torch.zeros(1, 8, 4, dtype=torch.long),
+                       torch.full((1, 8, 4), float("nan")))
+
+    class Out:
+        def __init__(self, logits):
+            self.logits = logits
+
+    class M(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.w = torch.nn.Linear(4, 7)
+
+        def forward(self, input_ids=None, **kw):
+            return Out(self.w(torch.zeros(*input_ids.shape, 4)))
+
+    with pytest.raises(RuntimeError, match="diverged"):
+        heal(M(), Poison(), HealConfig(tokens=4000, batch=1, abort_after_skips=10, amp=False),
+             device="cpu", log=lambda r: None)
