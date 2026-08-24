@@ -61,6 +61,14 @@ class TopKStore:
 
     def __init__(self, path: str, exclude_rows: set[int] | None = None):
         self.files = sorted(glob.glob(f"{path}/*.npz"))
+        if not self.files:
+            # an empty store used to yield nothing, so heal() ran zero steps and
+            # reported success with loss_before == loss_after (24 Aug 2026: a pod
+            # harvested with skip_topk produced twelve "finished" heal runs that had
+            # trained on nothing at all)
+            raise FileNotFoundError(
+                f"no top-k chunks in {path}: the heal has no teacher to match. "
+                "Harvest with skip_topk unset.")
         self.exclude = exclude_rows or set()
 
     def batches(self, batch: int, max_tokens: int, seed: int = 0):

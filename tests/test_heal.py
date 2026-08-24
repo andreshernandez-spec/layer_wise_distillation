@@ -78,3 +78,11 @@ def test_the_composed_model_passes_gradients_to_its_stages():
     grads = [p.grad for p in stu.parameters() if p.grad is not None]
     assert grads and any(float(g.abs().sum()) > 0 for g in grads), "stages got no gradient"
     assert all(p.grad is None for p in edges.parameters()), "frozen edges got gradients"
+
+
+def test_an_empty_topk_store_fails_loudly(tmp_path):
+    """Silence here is indistinguishable from success: heal() would run zero steps and
+    report loss_before == loss_after, which looks like a converged model."""
+    from lwd.heal.train import TopKStore
+    with pytest.raises(FileNotFoundError, match="no top-k chunks"):
+        TopKStore(str(tmp_path / "empty"))
