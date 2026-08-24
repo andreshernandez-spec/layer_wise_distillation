@@ -1,11 +1,10 @@
 # G2 verdict
 
-**Status: draft, 24 Aug 2026. Criterion 4, the kill criterion, is still running** (the
-equal-FLOPs random cell, 1.8367e8 tokens, started 20:31 UTC). Everything else is
-settled and is written up here as it stands. The recommendation section is deliberately
-empty until that cell lands: it is the criterion the phase exists to answer, and
-writing a conclusion around a missing number is how the first version of the C2.4
-baseline came to be invalid.
+**Status: final, 24 Aug 2026. The kill criterion fires.** All cells landed, the pod is
+deleted. At equal end-to-end FLOPs a randomly initialised student that simply trains
+longer reaches **3.5430** against the stagewise stack's **3.7221** (mean of two heal
+trajectories, 3.7560). Per the pre-registered gate in `docs/03`, **Phase 3 does not run**
+and the write-up becomes Phase 1's measurement plus this negative.
 
 Substrate: Pythia-1.4B, six stages of four teacher blocks each, 2-block same-width
 students (6.05e8 non-embedding parameters against the teacher's 1.21e9, a factor 0.500).
@@ -30,7 +29,7 @@ and after healing). Theseus swap was not run: C2.2 removed its motivation (see b
 and the budget went to the kill criterion instead. That is a scope cut and is recorded
 as one.
 
-**4. Kill: at every heal budget, stagewise ≤ random at equal total FLOPs.** *Pending.*
+**4. Kill: at every heal budget, stagewise ≤ random at equal total FLOPs.** **FIRED.**
 The cell is random init healed on **1.8367e8 tokens**, which is the stagewise arm's whole
 end-to-end budget: 2.541e16 harvest + 6.050e17 stage training + 3.630e16 for its own 1e7
 heal, divided by 6 x 6.05e8 parameters. Two things about it are written down here before
@@ -49,6 +48,31 @@ epochs is well past what was tested there, so it is a caveat and not a dismissal
 from a cold start at this length; the stagewise arm runs at 1e-4. Interpolating the 1e6
 probe, that costs the random arm roughly 0.2 nats, again in the direction that flatters
 stagewise.
+
+**The result.** The cell delivered 183,670,784 of 183,670,000 requested tokens over 89,683
+steps with zero skipped, and reached **3.5430** on held-out next-token loss.
+
+| arm | heal tokens | held-out loss |
+|---|---|---|
+| stagewise, seed 0 / seed 1 | 1e7 | 3.7221 / 3.7900 (mean **3.7560**) |
+| stagewise after DAgger | 1e7 | 3.6375 / 3.6829 (mean **3.6602**) |
+| **random init** | **1.8367e8** | **3.5430** |
+
+The gap is **-0.179 nats** against the stagewise seed-0 cell and **-0.213** against its
+two-trajectory mean, on a within-arm spread of 0.068. The kill fires by roughly three
+times the noise.
+
+It fires against the best stagewise variant too. The DAgger stack, at 3.6602, is still
+0.117 nats behind the random arm, and it *cost 10% more FLOPs* to build (an extra 6.05e16
+for the on-policy retraining), so at a properly equal budget it is further behind than
+that. There is no version of the stagewise pipeline measured here that survives the
+comparison.
+
+And it fires **despite both handicaps written down above**, each of which favoured
+stagewise. That is the disposition that makes this verdict safe: had the kill not fired,
+the 17.5-epoch recycling and the 0.2-nat schedule penalty would have made the margin an
+upper bound and the conclusion arguable. Because it fired, they are only reasons the true
+margin is larger.
 
 **5. The stagewise-to-oracle gap at 1e7 heal tokens.** Met: **+0.2371 nats** (stagewise
 3.7221, oracle 3.4850).
@@ -113,13 +137,20 @@ gain being closed rather than converging. The honest claim is conditional: DAgge
 if the composed model ships without end-to-end training, and is nearly worthless if it
 gets even 1e7 tokens.
 
-Say the 0.085 carefully: it is **smaller than the 0.106 nats of seed spread Phase 1
-measured** over 42 same-arm pairs, and there is one seed per cell here. So the correct
-statement is not "DAgger is worth 0.085 nats after healing" but **"after healing, DAgger's
-effect is not distinguishable from zero at this budget"**. That is the stronger version of
-the same conclusion, and it does not depend on a number too small to defend. A repeat on a
-second heal trajectory is queued to put a real error bar on it; until it lands, 3.338 at
-no-heal and 0.414 at 1e6 are the two figures in this table that clear the noise.
+Say the 0.085 carefully. Both arms were repeated on a second heal trajectory:
+
+| | traj 0 | traj 1 | mean | spread |
+|---|---|---|---|---|
+| plain | 3.7221 | 3.7900 | 3.7560 | 0.0679 |
+| after DAgger | 3.6375 | 3.6829 | 3.6602 | 0.0454 |
+
+so the effect at 1e7 is **0.096 nats**, and both DAgger runs fall below both plain runs.
+With two runs per arm that ordering is suggestive, not established: the separation
+(0.039 nats between the nearest pair) is smaller than either arm's own spread. The
+defensible statement is **"about 0.1 nats, and small enough that two runs per arm cannot
+place it confidently"**. What does not depend on the error bar is the comparison that
+matters: DAgger is worth 3.34 nats before healing and of order 0.1 after, a factor of
+thirty, and the direction of that collapse is not in doubt.
 
 ### The pattern across three independent tests
 
@@ -175,3 +206,67 @@ in the direction of a more favourable result.** An empty store, a truncated stor
 diverged run, and a short budget all reported success and all made the method look better
 than it was. Guards therefore belong at the point where the number is produced, not in the
 shell around it.
+
+---
+
+## Recommendation
+
+**Stop the pipeline at Phase 2. Do not run Phase 3.** That is what the pre-registered gate
+says, and nothing in the data argues for softening it. The stagewise construction spends
+6.30e17 FLOPs building a stack whose composed model, after the same heal, is 0.21 nats
+*worse* than the same architecture trained from random init on the same total budget. The
+structure it builds is real and measurable at every interface, and it is not worth what it
+costs.
+
+Three things follow, in order of how much they are worth.
+
+**1. The measurement paper is the deliverable, and it is a good one.** Phase 1 produced
+β ≈ 0.32 across input measures, the anchor crossover at ~250k real positions per interface,
+noise as a regularizer against over-fitting the interface objective, and the negative
+result on α as a per-stage gate over 112 students. Phase 2 adds composition-accumulates
+(with the ratio-product prediction wrong by 40x), the 48.5x first-stage amplification and
+what it explains, and exposure bias as most of the fresh per-stage term. Those stand on
+their own and none of them depended on the pipeline working.
+
+**2. The headline finding is methodological, and it generalizes past this project.** Four
+interventions were each ranked clearly by an interface-level metric, and every one of those
+rankings collapsed by roughly an order of magnitude once a modest end-to-end budget was
+allowed:
+
+| intervention | interface metric | after 1e7-token heal |
+|---|---|---|
+| anchors vs noise (G1) | 2.0 nats stitching | recipe choice worth 0.24 |
+| anchors-only vs anchors+noise | 2.85 nats unhealed | 0.24 |
+| DAgger | 41% composed drift | ~0.1 |
+| the whole stagewise stack | eps 0.41 to 0.46 per stage | **-0.21, i.e. negative** |
+
+The last row is the same phenomenon taken to its limit. A paper that reports this honestly
+is more useful to the field than one that reports a pipeline that works, because the
+practice of selecting distillation recipes on interface-level proxies is widespread and
+this is a clean, instrumented case of that practice pointing the wrong way.
+
+**3. What would have to change for the idea to be worth revisiting.** Not more tuning of
+this pipeline. The kill margin is not close, it survives the best mitigation measured, and
+it was obtained with both handicaps favouring the method. The condition under which
+stagewise construction could still pay is the one this design cannot test: a regime where
+the end-to-end heal is *not* available, because the composed model has to ship without
+end-to-end training, or because the teacher's activations are available but its data is
+not. In that regime the unhealed numbers are the operative ones and they are strongly in
+favour (9.57 against 12.99, and 6.23 with DAgger). That is a real setting, it is narrower
+than the one this project set out to address, and it would need its own pre-registration
+rather than a re-reading of these cells.
+
+## The one-paragraph version
+
+Six stages of Pythia-1.4B were distilled independently on noise plus real-activation
+anchors, composed, and healed end to end. The composition behaves better than the source
+document predicted: error accumulates additively rather than compounding through Lipschitz
+constants, because five of six stages contract what they inherit. On-policy retraining cuts
+composed drift 41% and puts the noise-trained stack below one trained on real activations.
+Every one of those wins is measured at the interfaces, and every one of them nearly
+vanishes after a modest end-to-end heal. At equal total FLOPs the whole construction loses
+to a randomly initialised student that just trains longer, by 0.21 nats against a
+within-arm spread of 0.07, and it loses despite two handicaps applied in its own favour.
+The gate fires, Phase 3 does not run, and the result worth publishing is the one about
+interface-level metrics overstating by an order of magnitude what survives end-to-end
+training.

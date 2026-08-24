@@ -73,8 +73,11 @@ reading the bill at deletion time understated Phase 1 by 7%.
 
 | | |
 |---|---|
-| uptime | *pending* |
-| cost | *pending* |
+| uptime | **12.0 h** (11:42:51 to 23:41 UTC, deleted straight after the last cell) |
+| cost | **~$19.03** at $1.59/h, to be reconciled against `get-billing` on 25 Aug |
+
+Reconcile tomorrow, not now: `docs/05` recorded $18.95 for the Phase 1 pod by reading the
+bill minutes after deletion and the final figure was $20.31.
 
 ## What to do differently next time
 
