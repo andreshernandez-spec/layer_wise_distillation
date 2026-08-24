@@ -1,5 +1,7 @@
 """The heal loss must be zero exactly when the student matches the teacher."""
+import argparse
 import math
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -135,3 +137,26 @@ def test_the_store_loops_and_a_short_run_is_refused(tmp_path):
     assert got >= 500, f"store stopped early at {got}"          # loops, not one pass
     got2 = sum(t.numel() for t, _, _ in s.batches(batch=1, max_tokens=16))
     assert 16 <= got2 <= 24                                      # and still stops on time
+
+
+def test_a_result_file_is_never_silently_overwritten(tmp_path, monkeypatch):
+    """dagger_stack.py promotes stage checkpoints in place, so the same heal command
+    loads a different model afterwards. It overwrote two cells of the C2.4 curve."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments" / "phase2"))
+    import heal as heal_cli
+
+    cfg = tmp_path / "c.yaml"
+    cfg.write_text(f"out: {tmp_path}\nn_stages: 1\nmodel: m\ndevice: cpu\ndtype: float32\n"
+                   f"harvest: {tmp_path}\nheldout: {tmp_path}/h.npy\nstudent_layers: 1\n"
+                   f"student_heads: 1\ntrain: {{seq_len: 4}}\n")
+    (tmp_path / "heal_random_C_t1e06_s0.json").write_text("{}")
+
+    a = argparse.Namespace(config=str(cfg), init="random", measure="C", q=1e8, tokens=1e6,
+                           seed=0, eval_rows=1, lr=0.0, tag="", overwrite=False)
+    with pytest.raises(SystemExit, match="exists"):
+        heal_cli.main(a)
+    a.tag = "_dagger"                       # a tag is the way past it, not a flag to add
+    with pytest.raises(Exception) as e:     # gets past the guard, then fails on the model
+        heal_cli.main(a)
+    assert "exists" not in str(e.value)

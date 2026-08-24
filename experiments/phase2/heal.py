@@ -11,6 +11,7 @@ That also keeps AdamW state on a 16 GB card.
     python experiments/phase2/heal.py CONFIG --init stagewise --measure C --tokens 1e6
 """
 import argparse
+import hashlib
 import json
 import subprocess
 import time
@@ -31,9 +32,18 @@ from lwd.stage.student import StudentStage, student_config
 DT = {"float16": torch.float16, "bfloat16": torch.bfloat16, "float32": torch.float32}
 
 
+def digest(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 22), b""):
+            h.update(chunk)
+    return h.hexdigest()[:16]
+
+
 def build(c, a, dev, dt):
     S, model_id = c["n_stages"], c["model"]
     struct = "mix" if a.measure == "C" else "iid"
+    loaded = {}
     phis = []
     for k in range(S + 1):
         st = np.load(Path(c["harvest"]) / f"stats_iface{k}.npz")
@@ -46,20 +56,28 @@ def build(c, a, dev, dt):
         stu = StudentStage(cfg, seed=a.seed + (1000 if a.init == "random" else 0))
         if a.init != "random":
             name = f"{a.measure}_{struct}_q{a.q:.0e}_s{a.seed}_stage{k}".replace("+", "")
-            stu.load_state_dict(torch.load(Path(c["out"]) / f"{name}.pt", map_location="cpu"))
+            ck = Path(c["out"]) / f"{name}.pt"
+            stu.load_state_dict(torch.load(ck, map_location="cpu"))
+            loaded[f"stage{k}"] = digest(ck)
         stages.append(Wrapped(stu.to(dev), phis[k], phis[k + 1]))
     edges = Edges(model_id, dt, dev)
     for p in edges.parameters():
         p.requires_grad_(False)          # the teacher's, and frozen
-    return StudentLM(edges, stages).to(dev)
+    return StudentLM(edges, stages).to(dev), loaded
 
 
 def main(a):
     c = yaml.safe_load(open(a.config))
     out = Path(c["out"]); out.mkdir(parents=True, exist_ok=True)
     dev, dt = c["device"], DT[c["dtype"]]
-    name = f"heal_{a.init}_{a.measure}_t{a.tokens:.0e}_s{a.seed}".replace("+", "")
-    model = build(c, a, dev, dt)
+    name = f"heal_{a.init}{a.tag}_{a.measure}_t{a.tokens:.0e}_s{a.seed}".replace("+", "")
+    # The stack checkpoints are promoted in place (dagger_stack.py), so the same command
+    # can load a different model on a later day. A result file is a measurement, not a
+    # cache entry: never overwrite one silently.
+    dest = out / f"{name}.json"
+    if dest.exists() and not a.overwrite:
+        raise SystemExit(f"{dest} exists; pass --tag or --overwrite")
+    model, loaded = build(c, a, dev, dt)
     n_train = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
     rows = np.load(c["heldout"])
@@ -86,8 +104,9 @@ def main(a):
     rec = {"name": name, "init": a.init, "measure": a.measure, "tokens": a.tokens, "seed": a.seed,
            "lr": lr if a.tokens > 0 else None, "warmup": warm if a.tokens > 0 else None,
            "trainable_params": n_train, "loss_before": before, "loss_after": after,
-           "history": hist, "sha": sha, "device": torch.cuda.get_device_name(0) if dev == "cuda" else "cpu"}
-    json.dump(rec, open(out / f"{name}.json", "w"))
+           "history": hist, "sha": sha, "stage_ckpt": loaded,
+           "device": torch.cuda.get_device_name(0) if dev == "cuda" else "cpu"}
+    json.dump(rec, open(dest, "w"))
     print(json.dumps({k: v for k, v in rec.items() if k != "history"}))
 
 
@@ -99,4 +118,6 @@ if __name__ == "__main__":
     p.add_argument("--tokens", type=float, default=1e6); p.add_argument("--seed", type=int, default=0)
     p.add_argument("--eval-rows", type=int, default=32)
     p.add_argument("--lr", type=float, default=0.0, help="override; 0 uses the config")
+    p.add_argument("--tag", default="", help="suffix on the run name, e.g. _dagger")
+    p.add_argument("--overwrite", action="store_true")
     main(p.parse_args())

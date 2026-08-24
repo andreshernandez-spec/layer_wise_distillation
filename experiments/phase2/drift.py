@@ -93,7 +93,10 @@ def main(a):
         del run
     prod = np.cumprod([1.0] + rep["lipschitz"]).tolist()
     rep["predicted_from_stage0_drift"] = [rep["realized_drift"][1] * p for p in prod]
-    json.dump(rep, open(out / f"drift_{a.measure}.json", "w"), indent=1)
+    dest = out / f"drift_{a.measure}{a.tag}.json"
+    if dest.exists() and not a.overwrite:
+        raise SystemExit(f"{dest} exists; pass --tag or --overwrite")
+    json.dump(rep, open(dest, "w"), indent=1)
     print(json.dumps({k: [round(x, 5) for x in v] if isinstance(v, list) else v for k, v in rep.items()}, indent=1))
 
 
@@ -102,4 +105,6 @@ if __name__ == "__main__":
     p.add_argument("config"); p.add_argument("--measure", default="R")
     p.add_argument("--q", type=float, default=1e8); p.add_argument("--seed", type=int, default=0)
     p.add_argument("--rows", type=int, default=16); p.add_argument("--batch", type=int, default=2)
+    p.add_argument("--tag", default="", help="suffix on the output name, e.g. _dagger")
+    p.add_argument("--overwrite", action="store_true")
     main(p.parse_args())

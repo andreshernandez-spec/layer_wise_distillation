@@ -384,3 +384,75 @@ stacks before healing (9.57 against 6.72) is closed by the heal.
 **None of this is the kill criterion.** Every row compares arms at equal *heal tokens*,
 and the stagewise arm has already spent 6.3e17 FLOPs on its stages. The equal-FLOPs
 cell (random init, 1.74e8 tokens, 16.6 passes over the same declared slice) is running.
+
+## C2.3 closing test: DAgger survives composition, and the heal eats it (24 Aug 2026)
+
+`dagger_stack.py` retrained all six stages on-policy (p=0.5, 1e7 positions each) and
+promoted them over the originals, so the composed model is the DAgger stack throughout.
+Two things were measured on it: the realized drift at every interface, and a re-heal on
+the same schedule as the plain stack (lr 1e-4, warmup 500).
+
+Realized drift at each interface, held-out real text:
+
+| interface | C (plain) | C after DAgger | R (real-trained) |
+|---|---|---|---|
+| 1 | 0.6374 | 0.5887 | 0.5025 |
+| 2 | 1.1712 | 0.8763 | 0.7703 |
+| 3 | 1.5411 | 1.2883 | 0.9215 |
+| 4 | 1.5487 | 1.2545 | 1.0689 |
+| 5 | 1.7485 | 1.2408 | 1.2557 |
+| 6 | **2.3348** | **1.3867** | 1.4728 |
+
+The per-stage gains do survive composition, and by more than they had to. Drift at the
+output falls 41%, the gap widens with depth exactly where C2.2 said the errors add up,
+and at the last two interfaces the noise-trained stack ends up **below** the stack
+trained on real activations. On this metric DAgger is the largest single effect in
+Phase 2.
+
+Then the heal:
+
+| | no heal | 1e6 | 1e7 |
+|---|---|---|---|
+| stagewise, plain | 9.5702 | 5.5692 | 3.7221 |
+| stagewise, after DAgger | 6.2323 | 5.1555 | 3.6375 |
+| gain | **3.3379** | 0.4137 | **0.0846** |
+
+**DAgger is worth 3.34 nats before healing and 0.08 nats after.** A 41% cut in composed
+drift, and a stack that overtakes the real-activation stack on drift, buys under a tenth
+of a nat once the composed model gets 1e7 tokens of end-to-end training. The 1e6 column
+shows the crossover in progress: 0.41 nats at 1e6, 0.08 at 1e7, so the gain is not
+converging to something useful, it is being closed.
+
+This is the same shape as G1 and as criterion 5 above, now on the strongest intervention
+in the phase: interface-level metrics rank the recipes, then a modest end-to-end budget
+compresses the ranking. Anything Phase 2 claims from ε or drift alone has to be quoted
+with the healed number beside it, or it overstates by an order of magnitude.
+
+The honest framing for DAgger is therefore about *when you cannot heal*: it is worth
+having if the composed model ships without end-to-end training, and close to worthless
+if it gets even 1e7 tokens. That is a narrower claim than C2.3's per-stage table
+(53-74% cuts) suggested on its own.
+
+### Incident: the closing test destroyed three of the plain stack's result files
+
+`dagger_stack.py` promotes retrained stages over the original `.pt` paths, so after it
+runs, the same `heal.py`/`drift.py` command loads a different model and writes the same
+output name. I saw this coming and wrote renames into `dagger_after.sh`, then suppressed
+their errors with `2>/dev/null`. The drift rename matched and moved the plain
+`drift_C.json` aside after it had already been overwritten; the heal renames did not
+match at all (built `heal_stagewise_C_t1e06.json`, the real name carries the `_s0` seed
+suffix), so both plain heal cells were left overwritten under their own names.
+
+Nothing was lost: every number is in the committed table above and the full records were
+rebuilt from `/root/heal_0.log` and `/root/drift_C.log`, with a `note` field saying so.
+The rebuilt heal histories are the every-25-steps logged subset, not every step.
+
+Two fixes, both in the code rather than in the launch script:
+
+- `heal.py` and `drift.py` take `--tag` and refuse to overwrite an existing result file
+  without `--overwrite`. A result file is a measurement, not a cache entry.
+- `heal.py` records a sha256 prefix of every stage checkpoint it loaded (`stage_ckpt`),
+  so a record identifies the model it measured instead of the model it was asked for.
+
+`2>/dev/null` on a corrective step is what turned an anticipated collision into silent
+data loss. The guard belongs where the file is written, not in the shell around it.
