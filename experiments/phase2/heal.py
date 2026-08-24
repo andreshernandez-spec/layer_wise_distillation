@@ -90,7 +90,7 @@ def main(a):
         return next_token_loss(m, ids, batch=1)
 
     before = ev(model.eval())
-    hist, lr, warm = [], None, None
+    hist, lr, warm, seen = [], None, None, 0
     if a.tokens > 0:
         # A cold start needs a gentler schedule than a warm one. Using the same lr for
         # both does not compare stagewise against random init, it compares a tuned
@@ -102,11 +102,12 @@ def main(a):
                         seed=hs, eval_every=10**9, log_every=25, amp=(dev == "cuda"))
         print(f"heal lr={lr} warmup={warm}", flush=True)
         store = TopKStore(str(Path(c["harvest"]) / "topk"))
-        hist = heal(model, store, hc, eval_fn=None, device=dev, log=lambda r: print(r, flush=True))
+        hist, seen = heal(model, store, hc, eval_fn=None, device=dev,
+                          log=lambda r: print(r, flush=True))
     after = ev(model.eval())
     sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
     rec = {"name": name, "init": a.init, "tag": a.tag, "measure": a.measure,
-           "tokens": a.tokens, "seed": a.seed, "heal_seed": hs,
+           "tokens": a.tokens, "tokens_seen": seen, "seed": a.seed, "heal_seed": hs,
            "lr": lr if a.tokens > 0 else None, "warmup": warm if a.tokens > 0 else None,
            "trainable_params": n_train, "loss_before": before, "loss_after": after,
            "history": hist, "sha": sha, "stage_ckpt": loaded,

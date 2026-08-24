@@ -150,4 +150,4 @@ def heal(model, store: TopKStore, cfg: HealConfig, eval_fn=None, device="cpu", l
             "success is worse than one that fails.")
     if eval_fn is not None:
         model.eval(); hist[-1]["eval"] = eval_fn(model)
-    return hist
+    return hist, seen
