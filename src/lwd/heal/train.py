@@ -141,7 +141,10 @@ def heal(model, store: TopKStore, cfg: HealConfig, eval_fn=None, device="cpu", l
         if eval_fn is not None and (step % cfg.eval_every == 0):
             model.eval(); rec["eval"] = eval_fn(model); model.train()
         if step % cfg.log_every == 0 or "eval" in rec:
-            log({k: (round(v, 5) if isinstance(v, float) else v) for k, v in rec.items()})
+            # round(lr, 5) printed 0.0 for a live 4.3e-06 and made a cosine schedule
+            # look like it had died two thirds of the way through the run
+            log({k: (float(f"{v:.3g}") if k == "lr" else round(v, 5))
+                 if isinstance(v, float) else v for k, v in rec.items()})
         hist.append(rec)
     if seen < cfg.tokens - cfg.batch * 2048:
         raise RuntimeError(
