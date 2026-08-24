@@ -17,7 +17,10 @@ is the record the tree's rules ask for: platform, commits, cost, and every incid
 
 ## What it produced
 
-114 cells in `out/phase1-1.4b-a100/`, plus spectral metrics for 112 checkpoints.
+113 cells in `out/phase1-1.4b-a100/`, plus spectral metrics for 112 checkpoints.
+**31.9 1e8-equivalents of training in 31.1 cell-hours**, which on the laptop's measured
+rate (~80 min per 1e8-equivalent) would have been **43 hours**. So the rental bought
+about 43 laptop-hours of sweep for $18.95, in 13.5 h of wall-clock.
 Grids: `grid-1.4b-full` (89 cells, two seeds), `-a46`, `-a92`, `-a184` (anchor
 crossover), `-long` (3e8), `-gauss` (12 cells), and targeted reruns. The findings are
 in `docs/02` and the verdict in `docs/04`.

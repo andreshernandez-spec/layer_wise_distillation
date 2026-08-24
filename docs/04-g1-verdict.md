@@ -1,9 +1,10 @@
 # G1 verdict
 
-**Status: 23 Aug 2026, one cell still running** (the C_mix@3e8 rerun). The other two
-landed and are folded in: the crossover is located at ~250k positions per interface,
-and the eps/stitching divergence is real on both seeds, which is the finding that
-most changes how Phase 2 and 3 must train a stage. Every
+**Status: final, 23 Aug 2026.** All cells landed, the pod is deleted, the bill is
+reconciled ($18.95, `docs/05`). Two results arrived after the first draft of this
+document and changed its conclusion: noise prevents the eps/stitching divergence and
+therefore wins at long training even at the full anchor budget, and the spectral-gate
+question is closed on 112 students rather than 5. Every
 figure traces to `out/phase1-1.4b-a100/` and `out/phase1-1.4b/`, SHAs in each run JSON.
 
 Substrate: Pythia-1.4B, stage 2 (blocks 8-11), 2-block same-width student, 109 cells
@@ -156,8 +157,11 @@ the data is narrower than the source document's and still worth a paper:
 
 - stagewise training reaches the same beta as end-to-end-quality real data;
 - ~1M recycled real positions per interface match ten times more distinct data;
-- below ~200k positions noise is what makes stagewise training work at all, and that
-  is exactly the regime storage forces at Tier 1 and 2;
+- **noise is a regularizer against over-fitting the interface objective**, and that
+  over-fitting arises two ways: too few anchors (below ~250k positions per interface)
+  or too much training (3e8 at the full budget). At 1e8 with 0.95M anchors noise is a
+  wash; at 3e8 it wins by 0.297 nats, on two seeds each. Both regimes occur in the
+  plan, so noise earns its place;
 - the interface contract, in its strong form, is not the mechanism: affine whitening
   beats marginal Gaussianization, and moment matching beats every richer noise model
   tried;
@@ -171,4 +175,15 @@ rather than noise for the DAgger ablation, and stop each stage on held-out ancho
 
 **If the project needs the strong claim** ("noise replaces data at scale"), Phase 1
 does not support it and no amount of Phase 2 will rescue it. Say so in the intro and
-claim the systems result instead.
+claim the two measured results instead: data frugality (0.95M recycled real positions
+match ten times more distinct data, indistinguishably) and noise as the regularizer
+that makes stagewise training survive both a small anchor budget and a long run.
+
+## The one-paragraph version
+
+Stagewise distillation reaches the same `beta` (~0.32) as training on distinct real
+data; ~1M recycled real positions per interface are indistinguishable from ten times
+more distinct data; a stage trained hard on its own interface objective degrades the
+composed model, and noise mixed with the anchors is what prevents that; the strong
+form of the interface contract is not the mechanism, since affine whitening beats
+marginal Gaussianization and moment matching beats every richer noise model tried.
