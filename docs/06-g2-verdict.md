@@ -31,6 +31,24 @@ and the budget went to the kill criterion instead. That is a scope cut and is re
 as one.
 
 **4. Kill: at every heal budget, stagewise ≤ random at equal total FLOPs.** *Pending.*
+The cell is random init healed on **1.8367e8 tokens**, which is the stagewise arm's whole
+end-to-end budget: 2.541e16 harvest + 6.050e17 stage training + 3.630e16 for its own 1e7
+heal, divided by 6 x 6.05e8 parameters. Two things about it are written down here before
+the number exists, because both are easier to state honestly now than afterwards.
+
+*The random arm is FLOPs-matched but data-limited.* It makes about 17.5 passes over the
+same declared 1e7-token slice, while the stagewise arm's heal makes one. A model given
+1.8367e8 *distinct* tokens would do better than this cell does. So the handicap runs
+against the random arm, which means: **if the kill fires, the conclusion is safe, because
+it won despite the handicap. If it does not fire, the margin is an upper bound and has to
+be quoted as one.** Phase 1's finding that 0.95M recycled real positions matched 10x more
+distinct data (0.450 against 0.452) suggests recycling is cheap at that scale, but 17.5
+epochs is well past what was tested there, so it is a caveat and not a dismissal.
+
+*The two arms are not on one schedule.* The random arm runs at 5e-5 because 1e-4 diverges
+from a cold start at this length; the stagewise arm runs at 1e-4. Interpolating the 1e6
+probe, that costs the random arm roughly 0.2 nats, again in the direction that flatters
+stagewise.
 
 **5. The stagewise-to-oracle gap at 1e7 heal tokens.** Met: **+0.2371 nats** (stagewise
 3.7221, oracle 3.4850).
