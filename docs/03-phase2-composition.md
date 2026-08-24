@@ -285,6 +285,23 @@ number, so all of them flatter the composed model.
 clean eps *also* improves slightly rather than trading off. After retraining the stage
 is better on drifted inputs (0.519) than it ever was on clean ones (0.567).
 
-So the answer is the first branch of the prediction: **exposure bias is most of the
-fresh per-stage error**, and it is cheap to remove. Two more stages are running before
-this is stated as the phase's result rather than one cell's.
+All three stages, same treatment:
+
+| stage | drifted before | drifted after | cut | clean before | clean after |
+|---|---|---|---|---|---|
+| 1 | 1.3577 | 0.5188 | 62% | 0.5670 | 0.5346 |
+| 3 | 0.7761 | 0.2690 | 65% | 0.5154 | 0.4670 |
+| 5 | 0.7635 | 0.1433 | **81%** | 0.3306 | 0.3028 |
+
+**The first branch of the prediction, on every stage.** Drifted error falls 62 to 81%,
+the cut grows with depth, and clean error improves as well at every stage: there is no
+trade-off to manage. After retraining, each stage is better on the drifted interface
+than it ever was on the clean one.
+
+**One caveat, and it is the reason this is not yet the phase's headline.** Drifted eps
+is measured against the teacher stage applied to the *drifted* input. If the student's
+propagated interface is an easier distribution than the teacher's own, eps can fall
+without the composed model improving. The honest test is whether a stack whose stages
+were all retrained this way composes to a lower loss, and that is one cheap run: six
+retrains at 1e7 positions each, in order, then recompose and measure. Queued.
+
