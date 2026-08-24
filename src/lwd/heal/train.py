@@ -72,20 +72,30 @@ class TopKStore:
                 "Harvest with skip_topk unset.")
         self.exclude = exclude_rows or set()
 
+    def epoch_tokens(self) -> int:
+        z = np.load(self.files[0])
+        return int(z["tokens"].size) * len(self.files)
+
     def batches(self, batch: int, max_tokens: int, seed: int = 0):
+        """Yields until max_tokens, **re-permuting and looping** when the store runs
+        out. A single pass over the files caps delivery at one epoch: a run asking for
+        1.74e8 tokens silently got 1.05e7, finished in 21 minutes and reported success
+        (24 Aug 2026). The declared real-token budget is about distinct tokens, so
+        repeating them is legitimate; silently truncating the run is not."""
         rng = np.random.default_rng(seed)
-        order = rng.permutation(len(self.files))
-        seen = 0
-        for fi in order:
-            z = np.load(self.files[fi])
-            tok, ids, logp = z["tokens"], z["ids"], z["logp"]
-            for i in range(0, tok.shape[0], batch):
-                t = torch.from_numpy(tok[i:i + batch].astype(np.int64))
-                yield (t, torch.from_numpy(ids[i:i + batch].astype(np.int64)),
-                       torch.from_numpy(logp[i:i + batch]))
-                seen += t.numel()
-                if seen >= max_tokens:
-                    return
+        seen, epoch = 0, 0
+        while seen < max_tokens:
+            for fi in rng.permutation(len(self.files)):
+                z = np.load(self.files[fi])
+                tok, ids, logp = z["tokens"], z["ids"], z["logp"]
+                for i in range(0, tok.shape[0], batch):
+                    t = torch.from_numpy(tok[i:i + batch].astype(np.int64))
+                    yield (t, torch.from_numpy(ids[i:i + batch].astype(np.int64)),
+                           torch.from_numpy(logp[i:i + batch]))
+                    seen += t.numel()
+                    if seen >= max_tokens:
+                        return
+            epoch += 1
 
 
 def heal(model, store: TopKStore, cfg: HealConfig, eval_fn=None, device="cpu", log=print):
@@ -133,6 +143,11 @@ def heal(model, store: TopKStore, cfg: HealConfig, eval_fn=None, device="cpu", l
         if step % cfg.log_every == 0 or "eval" in rec:
             log({k: (round(v, 5) if isinstance(v, float) else v) for k, v in rec.items()})
         hist.append(rec)
+    if seen < cfg.tokens - cfg.batch * 2048:
+        raise RuntimeError(
+            f"heal under-delivered: asked for {cfg.tokens} tokens, the store yielded "
+            f"{seen}. A run that trains on a fraction of its budget and reports "
+            "success is worse than one that fails.")
     if eval_fn is not None:
         model.eval(); hist[-1]["eval"] = eval_fn(model)
     return hist

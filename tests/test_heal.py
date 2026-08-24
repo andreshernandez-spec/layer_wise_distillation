@@ -118,3 +118,20 @@ def test_a_diverged_heal_aborts_instead_of_burning_its_budget():
     with pytest.raises(RuntimeError, match="diverged"):
         heal(M(), Poison(), HealConfig(tokens=4000, batch=1, abort_after_skips=10, amp=False),
              device="cpu", log=lambda r: None)
+
+
+def test_the_store_loops_and_a_short_run_is_refused(tmp_path):
+    """A single pass over the files capped delivery at one epoch, so a run asking for
+    17 epochs silently trained on one and reported success."""
+    import numpy as np
+    from lwd.heal.train import TopKStore
+    for i in range(3):
+        np.savez(tmp_path / f"c{i}.npz", tokens=np.zeros((2, 8), dtype=np.int64),
+                 ids=np.zeros((2, 8, 4), dtype=np.uint16),
+                 logp=np.full((2, 8, 4), -1.0, dtype=np.float16), lse=np.zeros((2, 8), np.float32))
+    s = TopKStore(str(tmp_path))
+    assert s.epoch_tokens() == 3 * 16
+    got = sum(t.numel() for t, _, _ in s.batches(batch=1, max_tokens=500))
+    assert got >= 500, f"store stopped early at {got}"          # loops, not one pass
+    got2 = sum(t.numel() for t, _, _ in s.batches(batch=1, max_tokens=16))
+    assert 16 <= got2 <= 24                                      # and still stops on time
