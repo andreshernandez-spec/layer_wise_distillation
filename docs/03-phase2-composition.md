@@ -119,3 +119,39 @@ that floor is not attributable to the student.
 oracle is 5.1e7 for real, 5.5e7 for recycled anchors and 7.5e7 for the recipe, against
 the source document's 1e8 per stage. Phase 2 should use 1e8 for headroom and report
 against Q*.
+
+## Machinery built (23 Aug 2026)
+
+| piece | where | state |
+|---|---|---|
+| composed student LM (teacher edges + distilled stages) | `src/lwd/compose/model.py` | tested: substituting the teacher's own stages recovers its loss |
+| all-stages trainer, both recipes, resumable | `experiments/phase2/train_stages.py` | running on the 1.4B |
+| drift and Lipschitz profile (C2.2) | `experiments/phase2/drift.py` | exercised end to end on a 3-stage 70m stack |
+| end-to-end heal on the stored top-k (C2.4) | `src/lwd/heal/train.py` | KD term verified zero exactly at a teacher match |
+
+### A hypothesis from the smoke stack, to test on the real one
+
+The 70m pipeline test (3 stages, students trained on only 3e4 positions, so barely
+trained) gave:
+
+    interface        0        1        2        3
+    realized drift   0.000    1.766    1.998    2.276
+    teacher stage Lipschitz ratio    0.737    0.480    0.347
+
+Every teacher stage **contracts** a perturbation of the size the student actually
+produces, yet the drift still grows with depth. If that survives on the 1.4B, the
+compounding-error framing in the source document (§1.6: "per-stage error amplifies
+through downstream Lipschitz constants") has the direction wrong at realistic
+magnitudes: the problem would be **each stage adding fresh error faster than the next
+one damps the inherited error**, not amplification of upstream error.
+
+It would also sit consistently beside the float-level measurement in C2.2 above, where
+the same stages amplify 10-1000x. A nonlinear map can be locally expansive near zero
+and globally contractive once perturbations are large enough to saturate it, and those
+are different regimes, not a contradiction.
+
+**Do not cite this yet.** These students sit at drift ~2, which is worse than
+predicting the mean, so their inputs are far off-manifold and the contraction may be
+saturation rather than anything about composition. The 1.4B stack, whose stages reach
+eps ~0.5, is the test. What the smoke run does establish is that the driver measures
+both quantities and that they can be read against each other.
