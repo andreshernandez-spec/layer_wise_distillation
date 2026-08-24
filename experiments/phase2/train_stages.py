@@ -23,12 +23,16 @@ def main(a):
         name = f"stage{k}_{a.measure}_{struct}_q{a.q:.0e}_s{a.seed}".replace("+", "")
         if not (out / f"{name}.json").exists():
             todo.append((k, name))
+    if a.shard:
+        i, n = (int(x) for x in a.shard.split("/"))
+        todo = todo[i::n]
+        print(f"shard {i}/{n}", flush=True)
     print(f"{len(todo)} of {c['n_stages']} stages to train", flush=True)
     for k, name in todo:
         cfg = dict(c)
         cfg["stage"] = k
         cfg["out"] = str(out)
-        tmp = out / f"_cfg_stage{k}.yaml"
+        tmp = out / f"_cfg_stage{k}_{a.measure}.yaml"
         out.mkdir(parents=True, exist_ok=True)
         yaml.safe_dump(cfg, open(tmp, "w"))
         cmd = [sys.executable, "experiments/phase1/run.py", str(tmp), "--measure", a.measure,
@@ -47,4 +51,5 @@ if __name__ == "__main__":
     p.add_argument("--q", type=float, default=1e8)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--dry", action="store_true")
+    p.add_argument("--shard", default="", help="i/n: take every nth stage, for concurrent workers")
     main(p.parse_args())
