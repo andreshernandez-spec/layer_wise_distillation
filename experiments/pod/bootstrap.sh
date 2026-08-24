@@ -5,7 +5,13 @@ set -eu
 cd /root/lwd
 LOG=/root/bootstrap.log
 exec >>"$LOG" 2>&1
-echo "== bootstrap start $(date -u +%H:%M:%S)"
+# Cap BLAS threads here too. The harvest's f64 covariance, CF sketch and quantile
+# accumulation are CPU-heavy, and on a many-core host the default gives them every
+# core: load average 23 with the GPU at 8% on a 128-core box (24 Aug 2026).
+export OMP_NUM_THREADS=${OMP_NUM_THREADS:-16}
+export MKL_NUM_THREADS=$OMP_NUM_THREADS
+export OPENBLAS_NUM_THREADS=$OMP_NUM_THREADS
+echo "== bootstrap start $(date -u +%H:%M:%S) OMP=$OMP_NUM_THREADS"
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 
 # Isolated venv, with torch installed explicitly. --system-site-packages looks
@@ -50,6 +56,6 @@ PY
 
 # harvest: statistics for every interface, anchor refs only where Phase 1 needs them
 if [ ! -f out/harvest-1.4b/stats_iface6.npz ]; then
-  python experiments/phase0/run.py experiments/pod/harvest-1.4b-pod.yaml
+  python experiments/phase0/run.py ${HARVEST_CFG:-experiments/pod/harvest-1.4b-pod.yaml}
 fi
 echo "== bootstrap done $(date -u +%H:%M:%S)"

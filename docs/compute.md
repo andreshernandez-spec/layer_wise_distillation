@@ -155,6 +155,12 @@ because grids drain to one long cell while the rest of the card goes unused. Eit
 overlap the tail with the next piece of work or plan to delete the pod at the point
 where only one cell remains.
 
+**The idle detector needs `pgrep | wc -l`, not `pgrep -c || echo 0`.** `pgrep -c`
+prints `0` *and* exits non-zero when nothing matches, so the `|| echo 0` fallback emits
+a second field, every later field shifts by one, and the GPU-utilisation slot ends up
+holding a process count. On 24 Aug 2026 that reported a pod idle while its harvest was
+running. `pgrep ... | wc -l` always prints exactly one number and always exits 0.
+
 **The trap that actually costs money: BLAS thread oversubscription.** The first
 4-worker launch sat with the **GPU at 0% for five minutes** while every worker burned
 800% CPU. The host has 256 cores, so each process gave its float64 `eigh` (the
