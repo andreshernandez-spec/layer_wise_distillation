@@ -23,7 +23,10 @@ per arm, and, more usefully, **measured error bars from repeated seeds**: eps 0.
 stitching delta 0.106 nats over 42 same-arm pairs. Every claim below is quoted against
 those.
 
-**3. The kill criterion.** Pre-registered as: best noise cell has
+**3. The kill criterion. Margins accepted by Andres 23 Aug 2026**, unchanged from the
+pre-registration and restated to lead on the stitching delta (`docs/02` "G1: closed").
+Reference 1.000 nats, margin 1.999, recipe arm 0.407 at its largest budget: **pass by
+a factor of five**. Original wording: Pre-registered as: best noise cell has
 `eps_inf <= 1.5 x eps_real(1e7)` and a stitching delta at its largest Q within
 `2 x` the real arm's. **Met by the recipe arm** (eps_inf CI upper bound 0.382 against a
 0.798 margin; stitching 0.527 against a 1.995 margin). Every pure-noise arm fails on
@@ -38,7 +41,7 @@ arms already fail (entropy 4.81 against 2.44 on real inputs). A shorter L makes 
 cheaper but changes the quantity the noise arms are worst at, so it is a Phase 2
 decision about cost, not a Phase 1 result that is missing.
 
-**Formally, G1 passes.** The rest of this document is why that sentence would be
+**G1 is closed as a pass, 23 Aug 2026.** The rest of this document is why that sentence would be
 misleading on its own.
 
 ---

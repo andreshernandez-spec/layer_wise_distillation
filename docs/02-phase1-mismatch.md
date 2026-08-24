@@ -107,8 +107,13 @@ Same fit on the stitching delta.
 1. All must-exist cells ran on the full Q grid with the measurements above, from a
    committed config, on recorded hardware.
 2. Fits with CIs exist for every cell, for both ε and stitching delta.
-3. **Kill criterion, pre-stated (margin to be set by Andres before the first run;
-   proposal)**: the best noise cell has
+3. **Kill criterion. Margins accepted by Andres on 23 Aug 2026**, after the campaign
+   and with the restatement below; the numbers were proposed before any cell ran and
+   were not moved. The criterion **leads with the stitching delta**, because eps is
+   measured in phi coordinates (not comparable across contracts), because eps and
+   stitching diverge once a stage trains past ~1e8 positions, and because the eps half
+   is a CI-upper-bound test that passes arms which visibly diverge. The eps half is
+   retained as advisory. Original wording: the best noise cell has
    `ε_∞ ≤ 1.5 × ε_R(1e7)` **and** a stitching delta at Q=1e8 that is `≤ 2 × the R cell's
    delta at 1e7`. If neither the best pure-noise cell nor `mix` meets it, Phases 2-5
    are cancelled and the project becomes the measurement paper (β, ε_∞, the attention
@@ -819,3 +824,23 @@ not gate *this* regime, not that HT-SR is wrong about the regime it was built fo
 
 The working alternative is already measured and cheap: **stop on held-out anchors,
 and for the final acceptance use the stitching delta** (`docs/03`).
+
+## G1: closed (23 Aug 2026)
+
+Margins accepted by Andres on 23 Aug 2026, unchanged from the pre-registered proposal,
+with the criterion restated to lead on the stitching delta.
+
+| | value |
+|---|---|
+| reference: live-real oracle at the 1e7 real-token budget, mean of two seeds | **1.000 nats** |
+| accepted margin, 2x | **1.999 nats** |
+| recipe arm at 1e8 | 0.527 |
+| recipe arm at its largest Q (3e8, two seeds) | **0.407** |
+
+**PASS, by a factor of five at the largest budget**, and the recipe arm is the only one
+that passes: every pure-noise arm fails on stitching (G_iid 7.92 at 1e8). The eps half
+also passes on its CI (upper bound 0.382 against a 0.798 margin) and is advisory.
+
+The reading in `docs/04` stands and is not softened by the pass: at 1e8 with the full
+anchor budget the anchors carry it, and noise earns its place through the two regimes
+where the anchors-only arm over-fits the interface objective.
