@@ -114,11 +114,12 @@ class Edges(nn.Module):
         self.embed_out.weight = nn.Parameter(sd["embed_out.weight"])
         self.to(device).eval()
 
-    @torch.no_grad()
+    # Deliberately NOT no_grad: the heal back-propagates through the head into the
+    # stages. Harvesting call sites wrap their own no_grad. (An @torch.no_grad() here
+    # silently produced a heal with no gradients at all, 23 Aug 2026.)
     def embed(self, ids: torch.Tensor) -> torch.Tensor:
         return self.embed_in(ids)
 
-    @torch.no_grad()
     def head(self, h: torch.Tensor) -> torch.Tensor:
         return self.embed_out(self.final_layer_norm(h))
 

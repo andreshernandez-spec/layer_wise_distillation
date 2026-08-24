@@ -17,3 +17,6 @@ device: cpu
 dtype: float32
 train: {batch: 2, seq_len: 256, lr: 3.0e-4, warmup: 100, weight_decay: 0.1, grad_clip: 1.0, eval_every: 200, log_every: 20, amp: true}
 out: out/phase2-70m
+heldout: out/heldout/heldout_rows.npy
+heal_batch: 1
+heal_lr: 1.0e-4

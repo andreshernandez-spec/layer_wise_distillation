@@ -17,3 +17,6 @@ device: cuda
 dtype: float16
 train: {batch: 8, seq_len: 2048, lr: 3.0e-4, warmup: 100, weight_decay: 0.1, grad_clip: 1.0, eval_every: 200, log_every: 20, amp: true}
 out: out/phase2-1.4b
+heldout: out/heldout/heldout_rows.npy
+heal_batch: 1
+heal_lr: 1.0e-4

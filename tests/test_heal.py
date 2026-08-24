@@ -49,3 +49,32 @@ def test_store_yields_aligned_batches():
         assert (logp[..., :-1] >= logp[..., 1:] - 1e-3).all()
         got += tok.numel()
     assert got >= 8192
+
+
+def test_the_composed_model_passes_gradients_to_its_stages():
+    """The heal back-propagates through the frozen head into the stages. An
+    @torch.no_grad() on the teacher's edges made that silently impossible."""
+    import numpy as np
+    from lwd.compose.chain import Wrapped
+    from lwd.compose.model import StudentLM
+    from lwd.contract.whiten import Affine, Contract
+    from lwd.harvest.model import Edges
+    from lwd.heal.train import kd_and_ce
+    from lwd.stage.student import StudentStage, student_config
+    MODEL, d = "EleutherAI/pythia-70m", 512
+    eye = Contract(None, Affine(torch.zeros(d), torch.eye(d), torch.eye(d)))
+    stu = StudentStage(student_config(MODEL, d, 1, 8), seed=0)
+    edges = Edges(MODEL, torch.float32)
+    for p in edges.parameters():
+        p.requires_grad_(False)
+    lm = StudentLM(edges, [Wrapped(stu, eye, eye)])
+    ids = torch.from_numpy(np.load("out/slice/anchor_rows.npy")[:1, :32].astype(np.int64))
+    logits = lm(input_ids=ids).logits
+    assert logits.requires_grad, "no graph: the heal would have no gradients"
+    tl = logits.detach().log_softmax(-1)
+    vals, tid = tl.topk(16, dim=-1)
+    kd, ce = kd_and_ce(logits, tid, vals, ids)
+    (kd + ce).backward()
+    grads = [p.grad for p in stu.parameters() if p.grad is not None]
+    assert grads and any(float(g.abs().sum()) > 0 for g in grads), "stages got no gradient"
+    assert all(p.grad is None for p in edges.parameters()), "frozen edges got gradients"

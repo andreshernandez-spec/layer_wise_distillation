@@ -127,7 +127,8 @@ def main(cfg_path):
         ifdir = out / "ifaces"; ifdir.mkdir(exist_ok=True)
         # interface 0
         for i, ids in batches(rows, cfg):
-            np.save(ifdir / f"iface0_{i:06d}.npy", edges.embed(ids.to(dev)).cpu().numpy())
+            with torch.no_grad():
+                np.save(ifdir / f"iface0_{i:06d}.npy", edges.embed(ids.to(dev)).cpu().numpy())
         for k, (a, b) in enumerate(bounds):
             runner = StageRunner(cfg["model"], a, b, dt, cfg["attn"], dev)
             for i, ids in batches(rows, cfg):
