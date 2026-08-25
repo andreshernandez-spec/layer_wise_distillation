@@ -21,3 +21,9 @@ def test_every_published_number_still_matches_its_result_file():
                        cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, f"a published number drifted from the data:\n{r.stdout}\n{r.stderr}"
     assert "0 disagreeing" in r.stdout, r.stdout
+
+
+def test_the_papers_numbers_match_the_claims():
+    r = subprocess.run([sys.executable, "experiments/paper/check_paper.py"],
+                       cwd=ROOT, capture_output=True, text=True)
+    assert r.returncode == 0, f"the paper and the data disagree:\n{r.stdout}\n{r.stderr}"

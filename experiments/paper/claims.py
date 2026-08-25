@@ -22,6 +22,7 @@ from fit import fit as fit_beta            # noqa: E402
 
 P1 = "out/phase1-1.4b-a100"
 P2 = "out/phase2-1.4b-a100"
+P2L = "out/phase2-1.4b"      # the laptop tree; docs/03's R-stack tables come from here
 TEACHER_NONEMB, N_LAYERS, S, STUDENT_LAYERS = 1.21e9, 24, 6, 2
 
 
@@ -128,6 +129,17 @@ def phase2(reg):
     claim(reg, "lipschitz.rest_max", max(a100[1:]), f"{P2}/drift_R.json")
     claim(reg, "drift.C.ratio_product_at_iface2",
           json.load(open(f"{P2}/drift_C.json"))["predicted_from_stage0_drift"][1], f"{P2}/drift_C.json")
+
+    # docs/03 "Stage difficulty by depth" is the R stack, measured on the laptop
+    for st in range(S):
+        f = f"{P2L}/R_iid_q1e08_s0_stage{st}.json"
+        if not Path(f).exists():
+            continue
+        r = json.load(open(f))
+        claim(reg, f"Rstack.stage{st}.eps", r["final_eval"], f,
+              doc={0: 0.524, 1: 0.477, 2: 0.413, 3: 0.348, 4: 0.309, 5: 0.256}[st], tol=2e-3)
+        claim(reg, f"Rstack.stage{st}.jacobian_cos", r["jacobian"]["cos_mean"], f,
+              doc={0: 0.038, 1: 0.273, 2: 0.328, 3: 0.347, 4: 0.291, 5: 0.245}[st], tol=5e-3)
 
     dg_cells = load(f"{P2}/dagger_C_stage*.json")
     cuts = [1 - r["eps_drifted_after"] / r["eps_drifted_before"] for r in dg_cells]
