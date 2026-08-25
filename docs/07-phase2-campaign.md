@@ -98,3 +98,48 @@ different question.
 output names.** `dagger_stack.py` was correctly queued after the heal curve and still
 destroyed three of its results, because the renames meant to separate them were wrapped
 in `2>/dev/null` and one pattern was wrong.
+
+
+---
+
+# The third pod: the replication pass (25 Aug 2026)
+
+| | |
+|---|---|
+| pod | `lwd-seeds-a100`, id `224y0qmd2809fo`, RunPod SECURE |
+| GPU | 1x NVIDIA A100-SXM4-80GB |
+| image, stack | as above, `torch 2.13.0+cu130` |
+| code | rsync at SHA `89d4d04` |
+| started / deleted | 2026-08-25 09:14:15 / 13:07 UTC, **3.9 h** |
+| cost | **$4.87 as of the evening of 25 Aug** ($4.78 GPU + $0.09 disk); the last bucket lands late, so treat this as provisional and re-read on 26 Aug. Uptime x rate says $6.17. |
+
+Four cells, all on the intended schedule with the config asserted at launch: the
+equal-FLOPs random cell on a second heal seed (2 h 47 m), the oracle cell at seed 0 as a
+control, the oracle cell at seed 1, and the noise-recipe cell at seed 1. Results and the
+noise decomposition are in `docs/06` under "Replication pass".
+
+## What broke
+
+**The bootstrap does not build every input it needs.** `decontam.json` and
+`heldout_rows.npy` are produced once on the laptop, from downloaded eval suites and a
+Pile-test shard. The Phase 1 and Phase 2 pods had them carried forward; a fresh pod does
+not, and the harvest discovered this two minutes in with a `FileNotFoundError`. Cost about
+three minutes. `bootstrap.sh` now checks both before anything touches the GPU.
+
+**Three false alarms from watchdogs reading stale logs.** Each time, a relaunch appended
+to the log a monitor was grepping, so the monitor kept re-reading the previous attempt's
+traceback and once declared the pod unreachable while it sat at 97% GPU. The runs were
+never affected. `seeds.sh` and `bootstrap.sh` now rotate their logs instead of appending.
+
+**A monitor that reported failure when the run was healthy.** An ssh command exits with the
+status of its last remote statement, and that statement was a `grep` for failure
+signatures, which exits 1 when it finds none. Recorded above in this document's Phase 2
+incident list because the same shape will recur.
+
+## What it settled
+
+The noise floor, which the project had never measured and had been quoting from Phase 1's
+single-stage sweep. It is about 0.02 nats, and it is mostly environmental: 0.0135 between
+two machines at the same seed, 0.0028 between two seeds on the same machine. The control
+run is what made that separable, and it is the reason to spend twenty minutes of a rental
+reproducing a number you already have.
