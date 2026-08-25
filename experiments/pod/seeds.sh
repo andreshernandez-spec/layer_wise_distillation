@@ -13,6 +13,11 @@ cd /root/lwd
 . .venv/bin/activate
 export OMP_NUM_THREADS=8 MKL_NUM_THREADS=8 OPENBLAS_NUM_THREADS=8
 LOG=/root/seeds.log
+
+# Rotate, do not append: a watchdog grepping this file must not see the previous
+# attempt's output. Three false alarms on 25 Aug came from exactly that.
+rotate_log () { [ -s "$1" ] && mv "$1" "$1.$(date -u +%Y%m%dT%H%M%SZ)"; :; }
+rotate_log "$LOG"
 CFG=experiments/phase2/configs/stack-1.4b-pod.yaml
 python - <<'PY'
 import yaml

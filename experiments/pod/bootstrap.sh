@@ -4,6 +4,8 @@
 set -eu
 cd /root/lwd
 LOG=/root/bootstrap.log
+# see seeds.sh: rotate so a relaunch does not leave a watchdog reading a stale failure
+[ -s "$LOG" ] && mv "$LOG" "$LOG.$(date -u +%Y%m%dT%H%M%SZ)"
 exec >>"$LOG" 2>&1
 # Cap BLAS threads here too. The harvest's f64 covariance, CF sketch and quantile
 # accumulation are CPU-heavy, and on a many-core host the default gives them every
