@@ -1,0 +1,7 @@
+# Second pass: the six arms at Q = 1e7 (~8 min each), the first Q where the
+# separation can show. Extends the first pass; the sweep skips existing cells.
+arms: [R_iid, C_mix, G_iid, I_iid, C_ar1, C_iid]
+q:      [1.0e7]
+q_real: [1.0e7]
+seeds: [0]
+multi_seed_below: 0

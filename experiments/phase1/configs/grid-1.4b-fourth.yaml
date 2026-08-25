@@ -1,0 +1,7 @@
+# Fourth pass: Q = 1e8 for the two leading noise arms (~1.4 h each), completing the
+# five-point eps(Q) curves the fit needs.
+arms: [C_mix, G_iid]
+q:      [1.0e8]
+q_real: []
+seeds: [0]
+multi_seed_below: 0

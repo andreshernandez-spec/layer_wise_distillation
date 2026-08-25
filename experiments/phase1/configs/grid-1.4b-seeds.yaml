@@ -1,0 +1,6 @@
+# Second seed for the decisive cells (docs/02 G1 criterion 2 needs CIs).
+arms: [C_mix, G_iid, L_iid]
+q:      [1.0e7, 3.0e7]
+q_real: [1.0e7]
+seeds: [1]
+multi_seed_below: 1.0e9

@@ -1,0 +1,15 @@
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+mode: resident
+attn: sdpa
+dtype: float16
+device: cuda
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+batch: 4
+seq_len: 2048
+anchor_seqs: 512      # 512 x 2048 = 1.05M positions per interface (docs/00 2.2)
+topk: 64
+seed: 0
+out: out/harvest-1.4b
+stats_only: true

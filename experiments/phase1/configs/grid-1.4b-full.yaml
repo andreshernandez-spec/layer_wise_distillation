@@ -1,0 +1,22 @@
+# The full Phase 1 design, sized by what the first passes already answered
+# (docs/02): the four arms still in the race run the whole Q ladder to 1e8, the
+# arms with a settled answer stop at 1e7 and stay as the ablation record.
+#
+#   L  live real activations, distinct positions   the true oracle
+#   R  anchor sequences, recycled                  the data-frugality arm
+#   C_mix  1 real in 11 + contract-Gaussianized    the recipe
+#   G_iid  moment-matched Gaussian                 pure noise
+#   G_mix  1 real in 11 + plain Gaussian           does the contract earn its place in the mix?
+#   C_iid  contract-Gaussianized, no anchors       does the contract do anything alone?
+#   C_ar1  + AR(1) across positions                settled negative, kept as record
+#   I_iid  isotropic                               settled negative, kept as record
+arms: [L_iid, R_iid, C_mix, G_iid, G_mix, C_iid, C_ar1, I_iid]
+q:      [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7, 3.0e7, 1.0e8]
+q_real: [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7, 3.0e7, 1.0e8]
+q_by_arm:
+  C_iid: [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7]
+  C_ar1: [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7]
+  I_iid: [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7]
+  G_mix: [1.0e6, 1.0e7, 3.0e7, 1.0e8]
+seeds: [0, 1]
+multi_seed_below: 3.0e7      # two seeds everywhere except the 1e8 cells

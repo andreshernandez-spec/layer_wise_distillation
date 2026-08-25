@@ -1,0 +1,6 @@
+# Exp 1 grid (docs/02). Must-exist cells first; budget cuts come from the end.
+arms: [R_iid, C_mix, C_iid, G_iid, I_iid, C_ar1, G_ar1, G_mix]
+q:      [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7, 3.0e7, 1.0e8]
+q_real: [1.0e5, 3.0e5, 1.0e6, 3.0e6, 1.0e7]     # real positions stop at the token budget
+seeds: [0, 1]
+multi_seed_below: 1.0e6

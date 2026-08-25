@@ -1,0 +1,15 @@
+# Tier 0b teacher (docs/00 §2.5): Pythia-2.8B, 32 blocks, 8 stages of 4, d=2560.
+model: EleutherAI/pythia-2.8b
+n_stages: 8
+mode: resident
+attn: sdpa
+dtype: float16
+device: cuda
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+batch: 2
+seq_len: 2048
+anchor_seqs: 512
+topk: 64
+seed: 0
+out: out/harvest-2.8b

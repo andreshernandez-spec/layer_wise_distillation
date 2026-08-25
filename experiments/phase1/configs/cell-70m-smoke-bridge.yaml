@@ -1,0 +1,17 @@
+model: EleutherAI/pythia-70m
+n_stages: 3
+stage: 1
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+stitch_seqs: 4
+harvest: out/harvest-70m-smoke
+contract: pca
+d_s: 256
+student_layers: 1
+student_heads: 8
+eval_seqs: 2
+mix_real_frac: 0.0909
+device: cpu
+dtype: float32
+train: {batch: 2, seq_len: 256, lr: 1.0e-3, warmup: 5, weight_decay: 0.1, grad_clip: 1.0, eval_every: 10, log_every: 10, amp: false}
+out: out/phase1-70m-smoke-bridge

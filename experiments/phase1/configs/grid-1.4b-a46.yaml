@@ -1,0 +1,7 @@
+# Scarce-anchor regime: 46 anchor sequences (94k real positions), R vs mix at 1e8.
+tag: a46
+arms: [R_iid, C_mix]
+q:      [1.0e8]
+q_real: [1.0e8]
+seeds: [0]
+multi_seed_below: 0

@@ -1,0 +1,6 @@
+# Overfitting question: do recycled anchors overfit where the mix does not? 3e8 positions.
+arms: [R_iid, C_mix]
+q:      [3.0e8]
+q_real: [3.0e8]
+seeds: [0]
+multi_seed_below: 0

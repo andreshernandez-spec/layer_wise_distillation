@@ -1,0 +1,8 @@
+# Crossover: at 46 anchor sequences noise is necessary (R overfits, the mix does not);
+# at 464 it is a liability. This locates the anchor budget where that flips.
+tag: a92
+arms: [R_iid, C_mix]
+q:      [1.0e8]
+q_real: [1.0e8]
+seeds: [0]
+multi_seed_below: 0

@@ -1,0 +1,7 @@
+# Third pass: the live-real oracle L (distinct real positions, capped at the 1e7 token
+# budget) and Q = 3e7 for the arms still in the race.
+arms: [L_iid, C_mix, G_iid, C_ar1]
+q:      [3.0e7]
+q_real: [1.0e6, 1.0e7]
+seeds: [0]
+multi_seed_below: 0

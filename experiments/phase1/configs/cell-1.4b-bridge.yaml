@@ -1,0 +1,19 @@
+# Bridge cell (docs/02): R arm with a Pythia-410M-width student (d=1024, 16 heads)
+# through the PCA top-1024 bridge on both interfaces. Read next to the C0.5 oracle.
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+stage: 2
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+stitch_seqs: 64
+harvest: out/harvest-1.4b
+contract: pca
+d_s: 1024
+student_layers: 2
+student_heads: 16
+eval_seqs: 48
+mix_real_frac: 0.0909
+device: cuda
+dtype: float16
+train: {batch: 8, seq_len: 2048, lr: 3.0e-4, warmup: 100, weight_decay: 0.1, grad_clip: 1.0, eval_every: 200, log_every: 20, amp: true}
+out: out/phase1-1.4b-bridge
