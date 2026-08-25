@@ -86,7 +86,7 @@ that the failure was not visible from the interface metrics themselves.
 
 ## 2. Setup
 
-**Teacher and stages.** Pythia-1.4B, 24 blocks, split into six stages of four blocks. Each
+**Teacher and stages.** Pythia-1.4B [@biderman2023pythia], 24 blocks, split into six stages of four blocks. Each
 student stage is two blocks at the teacher's width, so the student's non-embedding
 parameter count is 6.05e8 against the teacher's 1.21e9, a factor of exactly 0.500. The
 teacher's embedding, final layer norm and unembedding are transferred and frozen
@@ -107,7 +107,7 @@ noise (C, the recipe). Structure variants (iid across positions, AR(1), or the m
 noted as a suffix.
 
 **End-to-end metric.** Held-out next-token loss in nats, on 32 sequences of 2048 tokens
-from a decontaminated Pile-test slice never used in training. We refer to composing the
+from a decontaminated slice of the Pile's test split [@gao2020pile], never used in training. We refer to composing the
 six trained stages into a full model and training it end to end against the teacher's
 top-k log-probs as *healing*, and to the token budget spent doing so as the heal budget.
 
@@ -158,7 +158,7 @@ interface metrics separate clearly is worth about a fifth of a nat once the comp
 is trained at all.
 
 The same holds for the strongest intervention we measured. Retraining each stage on its
-own drifted inputs, in the manner of DAgger, cuts drifted eps by **53% to 74%** on stages
+own drifted inputs, in the manner of DAgger [@ross2011dagger], cuts drifted eps by **53% to 74%** on stages
 1 through 5, and by only 7.6% on stage 0, which has no inherited drift to correct because
 the student uses the teacher's embedding. Composed, those per-stage gains survive and
 compound favourably: drift at the final interface falls from 2.335 to **1.387**, a 41%
@@ -363,7 +363,7 @@ delta *worsens* from 0.450 to 0.710. Both seeds. A stage must not be early-stopp
 This is the same phenomenon as the paper's headline, observed at the level of a single
 stage: the interface metric and the end-to-end metric can move in opposite directions.
 
-We also tested whether heavy-tailed self-regularization alpha, estimated per stage with a
+We also tested whether heavy-tailed self-regularization alpha [@martin2021predicting], estimated per stage with a
 Hill estimator and a KS-chosen cutoff, could serve as a training-free gate on stage
 quality. Over 112 students it correlates +0.80 with the stitching delta across the whole
 pool, which is an artefact of training length rather than a signal: inside a fixed budget
@@ -462,13 +462,12 @@ level at which it invalidated the method.
 
 ## A note on the references
 
-`paper/refs.bib` marks each entry VERIFIED or UNVERIFIED. The verified ones were fetched
-from arXiv during a literature pass recorded in `docs/00-literature.md`; the unverified
-ones were written from memory while drafting and their ids, author lists and years have
-not been checked. They are plausible and they are not evidence. Anything dated March 2026
-or later rests only on a fetched abstract page and should be re-read before it is cited.
-This is the same standard the paper applies to its own numbers, and it should be cleared
-before submission rather than at it.
+Every entry in `paper/refs.bib` has been fetched from arXiv, the publisher, or the
+conference proceedings, and each carries the date it was checked. Nothing there is written
+from memory. One entry was dropped rather than shipped: a 2026 preprint that our own
+literature notes flag as resting only on a fetched abstract page, past the point where we
+could confirm it. It was not cited, so removing it cost nothing, which is the easy case.
+The rule it protects is the same one the numbers follow.
 
 ## Reproducibility
 
@@ -477,7 +476,18 @@ incident are in the repository. `experiments/paper/claims.py` recomputes all 37 
 quoted here from the raw run records and fails if any of them drifts; it is run as part of
 the test suite. Each run record carries the commit SHA, the device and the seed.
 
-Two numbers in earlier drafts of the project documentation did drift and were corrected by
-that script: the beta for the recycled-anchor arm, published from 13 points per arm and now
-0.336 over all 22 cells, and the stage-0 amplification, quoted at 48.5 from one platform and
-now given as a range because a second platform gives 72.7.
+Five figures in earlier drafts of this project's documentation did drift, and every one was
+caught by making something recompute rather than by rereading prose. They are listed here
+because a paper about proxies misleading should say where its own did.
+
+1. Beta for the recycled-anchor arm, published from 13 points per arm; over all 22 cells it
+   is 0.336, not 0.320.
+2. The stage-0 amplification, quoted at 48.5 from one platform; a second gives 72.7, so it
+   is now a range and the estimator's two-sequence sample is stated.
+3. The compounding prediction, which multiplied by stage 0's Lipschitz a second time and so
+   reported a 40x overshoot where there is an 82x undershoot.
+4. A figure carrying a 2.0 that was G1's pre-registered pass margin, a threshold rather
+   than a measured effect.
+5. The kill margin itself, quoted at 0.213 against a 0.068 "spread" that was a warmup
+   difference between two runs that were never replicates. On matched schedules it is
+   0.176 against about 0.02.

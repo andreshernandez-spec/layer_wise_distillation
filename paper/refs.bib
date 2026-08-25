@@ -1,10 +1,13 @@
 % Bibliography for paper/paper.md.
 %
-% Provenance matters here as much as it does for the numbers. Entries marked VERIFIED
-% were fetched from arxiv.org/abs/<id> during the 22 Aug 2026 literature pass recorded
-% in docs/00-literature.md. Entries marked UNVERIFIED were supplied from memory while
-% drafting and MUST be checked before submission: the id, the author list and the year
-% are all plausible and none of them has been fetched.
+% Provenance matters here as much as it does for the numbers. Every entry below has been
+% fetched from arxiv.org, the publisher, or the conference proceedings, either during the
+% 22 Aug 2026 literature pass recorded in docs/00-literature.md or on 25 Aug 2026; each
+% note says which. Nothing here is written from memory.
+%
+% One entry was removed rather than shipped: 2607.17019 "Regularize or Localize", which
+% docs/00-literature.md flags as post-cutoff and resting only on a fetched abstract page.
+% It was not cited in the paper, so dropping it costs nothing and keeps the rule intact.
 
 % ---------- VERIFIED (docs/00-literature.md, 22 Aug 2026) ----------
 
@@ -46,17 +49,9 @@
              than a controller; CIFAR scale, needed gating to avoid over-regularizing.}
 }
 
-@article{sigreg2026lm,
-  title   = {Regularize or Localize},
-  journal = {arXiv preprint arXiv:2607.17019},
-  year    = {2026},
-  note    = {VERIFIED but POST-CUTOFF: docs/00-literature.md flags anything from
-             March 2026 onward as resting only on a fetched page. Re-read before
-             citing. Applies a sketched distributional regularizer to LM hidden
-             states during continued pretraining.}
 }
 
-% ---------- UNVERIFIED: check the id, authors and year before submitting ----------
+% ---------- VERIFIED 25 Aug 2026 (fetched from arxiv.org / the publisher) ----------
 
 @inproceedings{raikwar2022noise,
   title     = {Discovering and Overcoming Limitations of Noise-engineered Data-free
@@ -64,7 +59,7 @@
   author    = {Raikwar, Piyush and Mishra, Deepak},
   booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
   year      = {2022},
-  note      = {UNVERIFIED page numbers/volume. No arXiv id; code at
+  note      = {VERIFIED 25 Aug 2026 at proceedings.neurips.cc. No arXiv id; code at
                github.com/Piyush-555/GaussianDistillation. Identifies activation
                distribution shift as the failure mode of end-to-end Gaussian-noise KD,
                which is the diagnosis interface injection answers.}
@@ -73,10 +68,13 @@
 @article{biderman2023pythia,
   title   = {Pythia: A Suite for Analyzing Large Language Models Across Training and
              Scaling},
-  author  = {Biderman, Stella and others},
+  author  = {Biderman, Stella and Schoelkopf, Hailey and Anthony, Quentin and
+             Bradley, Herbie and O'Brien, Kyle and Hallahan, Eric and Khan, Mohammad Aflah
+             and Purohit, Shivanshu and Prashanth, USVSN Sai and Raff, Edward and
+             Skowron, Aviya and Sutawika, Lintang and van der Wal, Oskar},
   journal = {arXiv preprint arXiv:2304.01373},
   year    = {2023},
-  note    = {UNVERIFIED id. The teacher family used throughout.}
+  note    = {VERIFIED 25 Aug 2026. The teacher family used throughout.}
 }
 
 @article{gao2020pile,
@@ -84,17 +82,19 @@
   author  = {Gao, Leo and others},
   journal = {arXiv preprint arXiv:2101.00027},
   year    = {2020},
-  note    = {UNVERIFIED id. Source of the declared slice and the held-out set.}
+  note    = {VERIFIED 25 Aug 2026, submitted 31 Dec 2020. Source of the declared slice
+             and the held-out set.}
 }
 
 @inproceedings{ross2011dagger,
   title     = {A Reduction of Imitation Learning and Structured Prediction to
                No-Regret Online Learning},
   author    = {Ross, Stephane and Gordon, Geoffrey J. and Bagnell, J. Andrew},
-  booktitle = {AISTATS},
+  booktitle = {Proceedings of the 14th International Conference on Artificial
+               Intelligence and Statistics (AISTATS)},
   year      = {2011},
-  note      = {UNVERIFIED id/venue details. The on-policy retraining in Section 4 is
-               this idea applied per stage.}
+  note      = {VERIFIED 25 Aug 2026; arXiv:1011.0686, submitted Nov 2010, AISTATS 2011.
+               The on-policy retraining in Section 4 is this idea applied per stage.}
 }
 
 @article{martin2021predicting,
@@ -102,6 +102,10 @@
              without access to training or testing data},
   author  = {Martin, Charles H. and Peng, Tongsu and Mahoney, Michael W.},
   journal = {Nature Communications},
+  volume  = {12},
+  number  = {1},
+  pages   = {4122},
   year    = {2021},
-  note    = {UNVERIFIED. The HT-SR alpha line; alpha as a diagnostic, never a loss.}
+  note    = {VERIFIED 25 Aug 2026 at nature.com; preprint arXiv:2002.06716.
+             The HT-SR alpha line; alpha as a diagnostic, never a loss.}
 }
