@@ -50,9 +50,11 @@ Supporting measurements, each with a committed script, a recorded environment an
   what they inherit (teacher Lipschitz 0.43 to 0.84) and each adds a roughly constant
   0.54 of fresh error. The ratio-product prediction is wrong by 40x at the second
   interface. `docs/03`.
-- **The teacher's first stage amplifies 48.5x**, which is why stage 0 is the hardest to
-  fit (Jacobian cosine 0.038) and why noise should not be injected at interface 0.
-  `docs/03`.
+- **The teacher's first stage amplifies by roughly 50 to 70x**, which is why stage 0 is
+  the hardest to fit (Jacobian cosine 0.038) and why noise should not be injected at
+  interface 0. Two platforms give 48.5 and 72.7: the estimator perturbs two sequences,
+  which is enough for the contractive stages (they agree within 3.1%) and not for this
+  one. The order of magnitude is the result. `docs/03`.
 - **Exposure bias is most of the fresh per-stage error**: on-policy retraining cuts
   drifted ε by 53 to 74% on stages 1 to 5, and 8% on stage 0, which has none to correct.
   `docs/03`.

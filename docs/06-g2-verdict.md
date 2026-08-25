@@ -103,7 +103,9 @@ goes against the source document. The practical consequence is that the mitigati
 to be re-justified as ways to reduce the *fresh per-stage term* rather than to stop
 amplification, which turned C2.3 from a demonstration into a test with a prediction.
 
-The teacher's first stage does amplify, by 48.5x, and that number is real. It does not
+The teacher's first stage does amplify, by roughly 50 to 70x (two platforms give 48.5
+and 72.7 from an estimator that uses two sequences, so the order of magnitude is the
+claim and the digits are not). It does not
 act on the composed model, because the student uses the teacher's embedding and interface
 0 has zero drift by construction. It explains instead why stage 0 is the hardest to fit
 (Jacobian cosine 0.038), and it is the number behind the source document's instinct not
@@ -224,8 +226,8 @@ Three things follow, in order of how much they are worth.
 β ≈ 0.32 across input measures, the anchor crossover at ~250k real positions per interface,
 noise as a regularizer against over-fitting the interface objective, and the negative
 result on α as a per-stage gate over 112 students. Phase 2 adds composition-accumulates
-(with the ratio-product prediction wrong by 40x), the 48.5x first-stage amplification and
-what it explains, and exposure bias as most of the fresh per-stage term. Those stand on
+(with the ratio-product prediction wrong by 40x), the roughly 50 to 70x first-stage
+amplification and what it explains, and exposure bias as most of the fresh per-stage term. Those stand on
 their own and none of them depended on the pipeline working.
 
 **2. The headline finding is methodological, and it generalizes past this project.** Four

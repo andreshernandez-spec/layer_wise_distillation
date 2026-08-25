@@ -191,11 +191,13 @@ per-stage acceptance signal has to be the stitching delta.
 ## C2.2 on the 1.4B: composition error accumulates, it does not compound (24 Aug 2026)
 
 R stack, six stages at 1e8 positions each, drift measured in whitened coordinates on
-held-out real text (`experiments/phase2/drift.py`, `drift_R.json`).
+held-out real text (`experiments/phase2/drift.py`). This table is the **laptop** run,
+`out/phase2-1.4b/drift_R.json`; the A100 repeat is in `out/phase2-1.4b-a100/` and agrees
+on everything except the stage-0 Lipschitz, which is discussed below.
 
 | stage | drift in | teacher Lipschitz | inherited | realized out | fresh |
 |---|---|---|---|---|---|
-| 0 | 0.000 | **48.5** | 0.000 | 0.510 | 0.510 |
+| 0 | 0.000 | **48.5** (see below) | 0.000 | 0.510 | 0.510 |
 | 1 | 0.510 | 0.454 | 0.232 | 0.776 | 0.544 |
 | 2 | 0.776 | 0.448 | 0.348 | 0.935 | 0.587 |
 | 3 | 0.935 | 0.500 | 0.467 | 1.097 | 0.630 |
@@ -228,10 +230,15 @@ will barely move, and the way to a better composed model is better stages rather
 better propagation. **C2.3 now has a sharp prediction to test rather than an assumed
 mechanism to demonstrate.**
 
-### The 48.5x at stage 0 is measured but does not act
+### The large amplification at stage 0 is real, badly measured, and does not act
 
-The teacher's first stage amplifies a perturbation 48.5x, far out of line with every
-other stage. It does not contribute here, because the student uses the teacher's
+The teacher's first stage amplifies a perturbation by **roughly 50 to 70x**, far out of
+line with every other stage. The range is not a rounding: the same R stack measured on
+the laptop and on the A100 gives 48.5 and 72.7, a 50% disagreement, while stages 1 to 5
+agree between the two platforms within 3.1%. The estimator perturbs **two** sequences
+with a single noise draw (`drift.py`), which is enough for a contractive map and not
+enough for a strongly expansive one. Quote the order of magnitude, never the third digit,
+and do not build anything on the exact value. It does not contribute here, because the student uses the teacher's
 embedding, so interface 0 has zero drift by construction. What it does explain is the
 finding above that stage 0 is the hardest to fit and has a near-orthogonal Jacobian
 (0.038): it is approximating a strongly expansive map. It also warns that any variant

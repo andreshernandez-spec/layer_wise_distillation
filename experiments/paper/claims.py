@@ -113,9 +113,19 @@ def phase2(reg):
             d = json.load(open(p))
             claim(reg, f"drift.{m}.output", d["realized_drift"][-1], str(p))
             reg[f"drift.{m}.output"]["profile"] = [round(x, 4) for x in d["realized_drift"]]
-    d = json.load(open(f"{P2}/drift_R.json"))
-    claim(reg, "lipschitz.stage0", d["lipschitz"][0], f"{P2}/drift_R.json", doc=72.668)
-    claim(reg, "lipschitz.rest_max", max(d["lipschitz"][1:]), f"{P2}/drift_R.json")
+    # Two platforms measured the same R stack. The contractive stages agree; stage 0,
+    # which is strongly expansive, does not, because the estimator perturbs two
+    # sequences with one noise draw. Quote it as a range or not at all.
+    a100 = json.load(open(f"{P2}/drift_R.json"))["lipschitz"]
+    lap = json.load(open("out/phase2-1.4b/drift_R.json"))["lipschitz"]
+    claim(reg, "lipschitz.stage0.a100", a100[0], f"{P2}/drift_R.json", doc=72.67, tol=1e-3)
+    claim(reg, "lipschitz.stage0.laptop", lap[0], "out/phase2-1.4b/drift_R.json", doc=48.53, tol=1e-3)
+    claim(reg, "lipschitz.stage0.disagreement", abs(a100[0] - lap[0]) / min(a100[0], lap[0]),
+          "two platforms, n=2 sequences each")
+    claim(reg, "lipschitz.contractive_max_disagreement",
+          max(abs(x - y) / min(x, y) for x, y in zip(a100[1:], lap[1:])),
+          "stages 1 to 5, two platforms")
+    claim(reg, "lipschitz.rest_max", max(a100[1:]), f"{P2}/drift_R.json")
     claim(reg, "drift.C.ratio_product_at_iface2",
           json.load(open(f"{P2}/drift_C.json"))["predicted_from_stage0_drift"][1], f"{P2}/drift_C.json")
 

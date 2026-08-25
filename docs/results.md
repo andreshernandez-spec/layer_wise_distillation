@@ -130,7 +130,9 @@ document's compounding frame is the wrong direction for five stages out of six.
 `docs/03`, `docs/06`.
 
 Stage 0 is the hardest to fit (Jacobian cosine 0.038) because the teacher's first stage
-amplifies a perturbation 48.5x. It does not act on the composed model, since the student
+amplifies a perturbation by roughly 50 to 70x (48.5 on the laptop, 72.7 on the A100, from
+an estimator that perturbs two sequences; stages 1 to 5 agree across platforms within
+3.1%). It does not act on the composed model, since the student
 uses the teacher's embedding and interface 0 has zero drift by construction. `docs/03`.
 
 Exposure bias is most of the fresh per-stage term: on-policy retraining (DAgger, p=0.5,
