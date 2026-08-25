@@ -218,3 +218,10 @@ __marimo__/
 .streamlit/secrets.toml
 out/
 paper/claims.json
+paper/paper.tex
+paper/paper.pdf
+paper/paper.aux
+paper/paper.log
+paper/latex.log
+paper/claims.txt
+paper/*.out
