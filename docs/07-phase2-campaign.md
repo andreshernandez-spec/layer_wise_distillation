@@ -68,16 +68,17 @@ before acting on the blame.** End every remote branch with `|| true` and the scr
 
 ## What it cost
 
-Reconciled the day after, per `docs/05`'s correction: the last bucket lands late and
-reading the bill at deletion time understated Phase 1 by 7%.
+Phase 1 ($20.31) plus Phase 2 ($19.32) is **$39.63** of rented compute for the whole
+project.
 
 | | |
 |---|---|
 | uptime | **12.0 h** (11:42:51 to 23:41 UTC, deleted straight after the last cell) |
-| cost | **~$19.03** at $1.59/h, to be reconciled against `get-billing` on 25 Aug |
+| cost | **$19.32** ($18.995 GPU + $0.329 disk), from `get-billing` after deletion |
 
-Reconcile tomorrow, not now: `docs/05` recorded $18.95 for the Phase 1 pod by reading the
-bill minutes after deletion and the final figure was $20.31.
+The uptime estimate (11.97 h x $1.59 = $19.03) was 1.5% light, because it misses the
+disk charge. Worth re-checking on 25 Aug: `docs/05` recorded $18.95 for the Phase 1 pod
+by reading the bill minutes after deletion, and the final figure was $20.31.
 
 ## What to do differently next time
 
