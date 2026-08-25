@@ -100,9 +100,11 @@ profile through downstream Lipschitz constants, DAgger-style on-policy mixing, T
 swap, heal-budget curve against random-init + equal heal.
 
 **Gate G2**: `docs/03`. **CLOSED 24 Aug 2026, the kill criterion FIRED** (`docs/06`).
-Random init healed on 1.8367e8 tokens reaches 3.5430 against the stagewise stack's 3.7560
-(two heal trajectories) at equal end-to-end FLOPs: a 0.213-nat gap on a 0.068 spread, and
-it beats the DAgger stack too. **Phase 3 does not run.** Theseus swap was cut: C2.2 removed
+Random init healed on 1.8367e8 tokens reaches 3.5430 against the noise-recipe stack's
+3.7560 at equal end-to-end FLOPs, a 0.213-nat gap, and it beats the DAgger stack too.
+The real-activation stack reaches 3.4850 at the same budget, which is a tie, so what fails
+is synthesizing the interface activations rather than the stagewise decomposition itself.
+**Phase 3 does not run.** Theseus swap was cut: C2.2 removed
 its motivation and the budget went to the kill criterion.
 
 What Phase 2 found that changes the later phases: composition error **accumulates rather

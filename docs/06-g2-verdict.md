@@ -1,10 +1,19 @@
 # G2 verdict
 
-**Status: final, 24 Aug 2026. The kill criterion fires.** All cells landed, the pod is
-deleted. At equal end-to-end FLOPs a randomly initialised student that simply trains
-longer reaches **3.5430** against the stagewise stack's **3.7221** (mean of two heal
-trajectories, 3.7560). Per the pre-registered gate in `docs/03`, **Phase 3 does not run**
-and the write-up becomes Phase 1's measurement plus this negative.
+**Status: final, 24 Aug 2026, amended 25 Aug.** The kill criterion fires. At equal
+end-to-end FLOPs a randomly initialised student that simply trains longer reaches
+**3.5430** against the noise-recipe stack's **3.7560** (mean of two heal runs). Per the
+pre-registered gate in `docs/03`, **Phase 3 does not run** and the write-up becomes
+Phase 1's measurement plus this negative.
+
+**Amended 25 Aug**, because the first version of this verdict overstated. The oracle
+stack, whose stages are trained on harvested real activations, was built from the same six
+1e8-position cells and the same harvest, so it sits at the identical budget and the
+criterion applies to it too. It reaches **3.4850**, which is 0.058 ahead of random init
+and smaller than any spread we can measure, so it **ties**. What fails is synthesizing the
+interface activations, not decomposing the model into stages. Stated the other way: this
+result does not refute Puzzle-style blockwise distillation on real activations, and the
+first draft read as though it did.
 
 Substrate: Pythia-1.4B, six stages of four teacher blocks each, 2-block same-width
 students (6.05e8 non-embedding parameters against the teacher's 1.21e9, a factor 0.500).
@@ -29,7 +38,8 @@ and after healing). Theseus swap was not run: C2.2 removed its motivation (see b
 and the budget went to the kill criterion instead. That is a scope cut and is recorded
 as one.
 
-**4. Kill: at every heal budget, stagewise ≤ random at equal total FLOPs.** **FIRED.**
+**4. Kill: at every heal budget, stagewise ≤ random at equal total FLOPs.** **FIRED for
+the noise recipe; a tie for the real-activation stack.**
 The cell is random init healed on **1.8367e8 tokens**, which is the stagewise arm's whole
 end-to-end budget: 2.541e16 harvest + 6.050e17 stage training + 3.630e16 for its own 1e7
 heal, divided by 6 x 6.05e8 parameters. Two things about it are written down here before
@@ -218,11 +228,17 @@ shell around it.
 ## Recommendation
 
 **Stop the pipeline at Phase 2. Do not run Phase 3.** That is what the pre-registered gate
-says, and nothing in the data argues for softening it. The stagewise construction spends
-6.30e17 FLOPs building a stack whose composed model, after the same heal, is 0.21 nats
-*worse* than the same architecture trained from random init on the same total budget. The
+says, and nothing in the data argues for softening it. The noise recipe spends 6.30e17
+FLOPs building a stack whose composed model, after the same heal, is 0.21 nats *worse*
+than the same architecture trained from random init on the same total budget. The
 structure it builds is real and measurable at every interface, and it is not worth what it
 costs.
+
+Be precise about what that kills. Stagewise construction on harvested real activations
+ties at equal FLOPs (3.4850 against 3.5430, inside the spread), so the decomposition is
+roughly free and the thing that costs 0.21 nats is replacing harvested activations with
+synthesized ones. This project's contribution was the synthesis, and the synthesis is what
+does not pay.
 
 Three things follow, in order of how much they are worth.
 

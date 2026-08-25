@@ -175,6 +175,9 @@ cells, and the stagewise arm's own 1e7 heal) a random-init student healed on 1.8
 tokens reaches **3.5430** against the stagewise stack's 3.7221/3.7900 over two heal
 trajectories (mean 3.7560, spread 0.0679). Gap **-0.213 nats**, about 3x the within-arm
 spread. It also beats the DAgger stack (3.6602 mean), which cost 10% more FLOPs to build.
-The kill fired despite two handicaps applied in the stagewise arm's favour: the random arm
-recycles one 1e7-token slice 17.5 times rather than seeing distinct tokens, and runs at
-5e-5 against 1e-4 (worth ~0.2 nats). **Phase 3 does not run.** `docs/06`.
+At the same budget the real-activation (oracle) stack reaches 3.4850, 0.058 ahead of
+random init and inside any spread available to us, so it ties: what fails is synthesizing
+the interface activations, not the stagewise decomposition. Of the two asymmetries noted
+beforehand only the schedule one (5e-5 against 1e-4, worth ~0.2 nats) runs in the method's
+favour; the data recycling does not, since the stagewise stages recycle a 0.95M-position
+anchor set about a hundred times. **Phase 3 does not run.** `docs/06`.
