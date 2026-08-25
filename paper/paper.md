@@ -262,15 +262,23 @@ memory of the full recipe is set by the phase this paper shows you cannot skip.
 
 **Two handicaps, both favouring the method.** We recorded these before the run finished.
 First, the random arm is FLOPs-matched but data-limited: it makes about 17.5 passes over
-the same declared 1e7-token slice, while the stagewise arm's heal makes one. A model given
-1.8367e8 distinct tokens would do better than this cell does. Second, the two arms are not
-on one schedule: 5e-5 against 1e-4, which interpolating from the 1e6 probe costs the random
-arm roughly 0.2 nats.
+the same declared 1e7-token slice, while the stagewise arm's heal makes one. Second, the
+two arms are not on one schedule: 5e-5 against 1e-4, which interpolating from the 1e6 probe
+costs the random arm roughly 0.2 nats.
 
-Both handicaps run against the random arm, which is the arm that beat the noise recipe.
-Had that comparison gone the other way they would have made the margin an upper bound and
-the conclusion arguable; because it went this way they are reasons to think the true margin
-is larger.
+The schedule handicap plainly runs against the random arm, which is the arm that won, so it
+is a reason to think the true margin is a little larger.
+
+The data limitation we would rather not lean on, because on inspection it is not clearly a
+handicap at all. Both arms are confined to the same slice: the stagewise arm's heal makes
+one pass over it, but its six stages were each trained on 1e8 positions drawn from an
+anchor set of 0.95M distinct real positions, which is about a hundred passes. In total data
+exposure the stagewise arm recycles harder than the random one. And Phase 1 measured what
+recycling costs at this scale and found it close to nothing: 0.95M positions recycled about
+a hundred times matched a live-real stream carrying ten times more distinct data, 0.450
+against 0.452 of stitching delta, well inside the 0.106 seed spread. We therefore read the
+data limitation as a small effect of unknown sign, and treat the 0.213 margin as roughly
+unbiased on that axis rather than as a lower bound.
 
 They cut the other way for the oracle. That arm ran at 1e-4 while the random arm ran at
 5e-5, so roughly 0.2 nats of the oracle's apparent position is schedule rather than method,
@@ -378,9 +386,10 @@ scale imported from the single-stage sweep (0.106 over 42 same-arm pairs) rather
 measured on these cells. Four matched-schedule replicates, about four and a half hours of
 A100 time, would settle it, and they are the next measurement we would make.
 
-**The random arm recycles data.** As stated in Section 5, it makes 17.5 passes over one
-1e7-token slice. This biases against it, which is the safe direction here, but it means
-the reported margin is not the margin a data-unconstrained baseline would achieve.
+**Both arms recycle the same slice.** The random arm makes 17.5 passes over the declared
+1e7-token slice; the stagewise arm's stages make roughly a hundred over a 0.95M-position
+subset of it. Neither is data-unconstrained, and the reported margin is not the one either
+would reach with unlimited distinct data.
 
 **One named baseline was not run.** Self-generated-text distillation at matched compute is
 the comparison a reader will still want, and it was scheduled for the phase this result
