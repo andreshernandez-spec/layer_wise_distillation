@@ -96,7 +96,7 @@ def main(a):
         # both does not compare stagewise against random init, it compares a tuned
         # learning rate against an untuned one.
         lr = a.lr if a.lr else c.get("heal_lr_random" if a.init == "random" else "heal_lr", 1e-4)
-        warm = c.get("heal_warmup_random", 500) if a.init == "random" else c.get("heal_warmup", 50)
+        warm = c.get("heal_warmup_random", 500) if a.init == "random" else c.get("heal_warmup", 500)
         globals()["_lr"], globals()["_warm"] = lr, warm
         hc = HealConfig(tokens=int(a.tokens), batch=c.get("heal_batch", 1), lr=lr, warmup=warm,
                         seed=hs, eval_every=10**9, log_every=25, amp=(dev == "cuda"))

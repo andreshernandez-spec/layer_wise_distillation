@@ -76,6 +76,21 @@ def phase2(reg):
     def L(key, tok):
         return heals[(key, tok)]["loss_after"]
 
+    # The schedule a cell ran at is part of the result. The pod's config was edited to
+    # warmup 500 and the edit was never committed, so the repo could not reproduce its
+    # own published numbers. Assert the recorded schedule instead of trusting the yaml.
+    off = []
+    for (key, tok), r in sorted(heals.items()):
+        if r.get("lr") is None:
+            continue
+        want_lr = 5e-5 if key.startswith("random") and tok > 1e7 else 1e-4
+        if abs(r["lr"] - want_lr) > 1e-9 or r.get("warmup") != 500:
+            off.append(f"{key}@{tok:.0e}(lr={r['lr']:g},warmup={r.get('warmup')})")
+    claim(reg, "schedule.cells_checked", float(sum(1 for r in heals.values() if r.get("lr"))),
+          "every heal record's lr and warmup")
+    claim(reg, "schedule.off_schedule_cells", float(len(off)), "; ".join(off) or "none")
+    reg["schedule.off_schedule_cells"]["which"] = off
+
     sw = [L("stagewise", 1e7), L("stagewise_h1", 1e7)]
     dg = [L("stagewise_dagger", 1e7), L("stagewise_dagger_h1", 1e7)]
     rnd_eq = L("random_eqflops", 183670000.0)
