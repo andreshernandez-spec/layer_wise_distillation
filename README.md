@@ -48,8 +48,8 @@ Supporting measurements, each with a committed script, a recorded environment an
   budget the sign flips. `docs/02`.
 - **Composition error accumulates, it does not compound.** Five of six stages contract
   what they inherit (teacher Lipschitz 0.43 to 0.84) and each adds a roughly constant
-  0.54 of fresh error. The ratio-product prediction is wrong by 40x at the second
-  interface. `docs/03`.
+  0.54 of fresh error. Propagation alone, with no fresh term, predicts the drift should
+  decay to 0.029 at the output; it is measured at 2.335. `docs/03`.
 - **The teacher's first stage amplifies by roughly 50 to 70x**, which is why stage 0 is
   the hardest to fit (Jacobian cosine 0.038) and why noise should not be injected at
   interface 0. Two platforms give 48.5 and 72.7: the estimator perturbs two sequences,

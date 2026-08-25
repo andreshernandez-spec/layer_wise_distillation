@@ -147,8 +147,11 @@ def phase2(reg):
           max(abs(x - y) / min(x, y) for x, y in zip(a100[1:], lap[1:])),
           "stages 1 to 5, two platforms")
     claim(reg, "lipschitz.rest_max", max(a100[1:]), f"{P2}/drift_R.json")
-    claim(reg, "drift.C.ratio_product_at_iface2",
-          json.load(open(f"{P2}/drift_C.json"))["predicted_from_stage0_drift"][1], f"{P2}/drift_C.json")
+    dc = json.load(open(f"{P2}/drift_C.json"))
+    claim(reg, "drift.C.pure_propagation_at_output", dc["predicted_from_stage1_drift"][-1],
+          f"{P2}/drift_C.json")
+    claim(reg, "drift.C.realized_over_propagated",
+          dc["realized_drift"][-1] / dc["predicted_from_stage1_drift"][-1], "derived")
 
     # docs/03 "Stage difficulty by depth" is the R stack, measured on the laptop
     for st in range(S):

@@ -264,15 +264,19 @@ direction that matters.
 
 | interface | 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|
-| realized drift (noise recipe) | 0.637 | 1.171 | 1.541 | 1.549 | 1.748 | 2.335 |
-| ratio-product prediction | 0.637 | 46.32 | 20.13 | 8.82 | 4.10 | 2.08 |
+| realized drift (noise recipe) | 0.637 | 1.171 | 1.541 | 1.549 | 1.748 | **2.335** |
+| pure propagation, no fresh error | 0.637 | 0.277 | 0.121 | 0.057 | 0.041 | **0.029** |
 
-The prediction is wrong by a factor of 40 at the second interface. The reason is that
-every stage after the first **contracts** the error it inherits: the measured teacher
-Lipschitz ratios for stages 1 to 5 lie between 0.45 and 0.84, and agree across two
-platforms within 3.1%. Drift still grows with depth, from 0.50 to 1.47 on the
-real-activation stack, but as a sum: each stage adds a roughly constant fresh error of
-about 0.54, essentially independent of depth.
+Take the drift measured at the first interface and propagate it through the stages that
+follow, multiplying by each one's measured Lipschitz ratio and adding nothing. Because
+every stage after the first **contracts** what it inherits, with ratios between 0.45 and
+0.84 that agree across two platforms within 3.1%, that model predicts the drift should
+almost vanish: 0.029 by the last interface. It is **2.335**, larger by a factor of 82.
+
+So essentially none of the drift at the output is inherited. All of it is fresh error
+introduced by the stages themselves, roughly 0.54 per stage and essentially independent
+of depth, minus the part the next stage contracts away. Composition error here is a sum
+dominated by its newest term, not a product.
 
 The first stage is the exception and amplifies by roughly 50 to 70x. We give a range
 deliberately. Two platforms measuring the same stack give 48.5 and 72.7, because the

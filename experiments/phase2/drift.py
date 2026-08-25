@@ -91,8 +91,12 @@ def main(a):
         dout = whitened_rel_mse(y1, y0, phis[k + 1])
         rep["lipschitz"].append(dout / max(din, 1e-12))
         del run
-    prod = np.cumprod([1.0] + rep["lipschitz"]).tolist()
-    rep["predicted_from_stage0_drift"] = [rep["realized_drift"][1] * p for p in prod]
+    # Propagate the drift measured at interface 1 through the stages that come AFTER
+    # stage 0. The first version multiplied by lipschitz[0] as well, applying stage 0's
+    # amplification a second time to a drift that is already its output, which turned a
+    # prediction of 0.029 into one of 46.3 and inverted the sign of the discrepancy.
+    prod = np.cumprod([1.0] + rep["lipschitz"][1:]).tolist()
+    rep["predicted_from_stage1_drift"] = [rep["realized_drift"][1] * p for p in prod]
     dest = out / f"drift_{a.measure}{a.tag}.json"
     if dest.exists() and not a.overwrite:
         raise SystemExit(f"{dest} exists; pass --tag or --overwrite")

@@ -125,7 +125,11 @@ transferred and frozen.
 Composition error accumulates, it does not compound. Every stage after the first
 contracts what it inherits (teacher Lipschitz 0.43 to 0.84) and adds a roughly constant
 fresh error of about 0.54. Realized drift at the output is 2.335 (C stack); the
-ratio-product prediction from stage 0's drift is 46.3 at interface 2 alone. The source
+drift that pure propagation predicts, multiplying the interface-1 drift by each following
+stage's measured Lipschitz and adding nothing, is 0.029 at the output: 82x smaller than
+realized, so essentially all of the drift is fresh per-stage error. (Corrected 25 Aug 2026
+from a version that applied stage 0's amplification twice and reported a 40x overshoot.)
+The source
 document's compounding frame is the wrong direction for five stages out of six.
 `docs/03`, `docs/06`.
 

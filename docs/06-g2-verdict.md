@@ -91,10 +91,14 @@ stages.
 | interface | 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|
 | realized drift (C) | 0.637 | 1.171 | 1.541 | 1.549 | 1.748 | 2.335 |
-| ratio-product prediction | 0.637 | 46.32 | 20.13 | 8.82 | 4.10 | 2.08 |
+| pure propagation, no fresh error | 0.637 | 0.277 | 0.121 | 0.057 | 0.041 | **0.029** |
 
-The prediction is off by a factor of 40 at interface 2 and never recovers, because every
-stage after the first **contracts** what it inherits (teacher Lipschitz 0.43 to 0.84).
+Propagate the interface-1 drift through the stages that follow, multiplying by each
+measured Lipschitz ratio and adding nothing, and it predicts 0.029 at the output. The
+realized value is 2.335, larger by 82x, because every stage after the first **contracts**
+what it inherits (teacher Lipschitz 0.43 to 0.84) and then adds fresh error of its own.
+(Corrected 25 Aug 2026: the first version applied stage 0's 72x amplification a second
+time, to a drift that is already its output, and so reported a 40x overshoot instead.)
 Drift grows anyway, but as a sum: each stage adds a roughly constant fresh error of about
 0.54 regardless of depth.
 
@@ -226,7 +230,7 @@ Three things follow, in order of how much they are worth.
 β ≈ 0.32 across input measures, the anchor crossover at ~250k real positions per interface,
 noise as a regularizer against over-fitting the interface objective, and the negative
 result on α as a per-stage gate over 112 students. Phase 2 adds composition-accumulates
-(with the ratio-product prediction wrong by 40x), the roughly 50 to 70x first-stage
+(pure propagation predicts 0.029 against a realized 2.335), the roughly 50 to 70x first-stage
 amplification and what it explains, and exposure bias as most of the fresh per-stage term. Those stand on
 their own and none of them depended on the pipeline working.
 

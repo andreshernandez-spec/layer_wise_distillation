@@ -30,7 +30,7 @@ BOUND = [
     ("3.338", "dagger.unhealed_effect", 3),
     ("1.8367e8", "flops.equal_tokens", None),
     ("6.6671e17", "flops.stagewise_end_to_end", None),
-    ("46.32", "drift.C.ratio_product_at_iface2", 2),
+    ("0.029", "drift.C.pure_propagation_at_output", 3),
     ("2.335", "drift.C.output", 3),
     ("1.387", "drift.C_dagger.output", 3),
     ("1.473", "drift.R.output", 3),
