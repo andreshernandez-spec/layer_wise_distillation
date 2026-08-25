@@ -1,4 +1,4 @@
-# Interface metrics overstate what survives end-to-end training: a negative result in stagewise distillation
+# Interface metrics overstate what survives end-to-end training: a negative result in noise-fed stagewise distillation
 
 Andres Hernandez
 
@@ -20,9 +20,16 @@ The choice between training stages on real activations and training them on nois
 small anchor set is worth 2.85 nats unhealed and 0.237 healed. Taken to its limit, the
 same effect kills the method: at equal total FLOPs, a randomly initialised student of the
 same architecture, healed for longer, reaches 3.5430 nats of held-out next-token loss
-against the stagewise stack's 3.7560, a gap of 0.213 against a within-arm spread of
-0.068. The stagewise construction spends 6.30e17 FLOPs building structure that is worth
-less than nothing once the end-to-end budget it displaces is accounted for.
+against the noise-trained stack's 3.7560, a gap of 0.213 against a within-arm spread of
+0.068.
+
+The comparison also separates two things that are easy to conflate. A stack whose stages
+are trained on *harvested* real activations, at the identical FLOPs budget, reaches 3.4850,
+which is inside the measured spread of random initialisation and which we therefore read as
+a tie. So stagewise construction itself roughly breaks even here, and it is the step of
+synthesizing the interface activations that costs 0.21 nats. The 6.05e17 FLOPs of stage
+training buy structure worth less than the end-to-end training they displace, but only once
+the activations are synthetic.
 
 Along the way we report the measurements the pipeline was built to produce, which stand
 independently of it: the exponent in eps(Q) = c Q^-beta + eps_inf is about 0.32 for the
@@ -50,7 +57,8 @@ input, and expensive to evaluate end to end, because that requires composing the
 and training it. So the interface metric is what gets used.
 
 This paper reports that on our substrate the interface metric is not a usable proxy for
-the decision it is being used to make. This is not a claim that the two are uncorrelated.
+the decision it is being used to make, and that following it leads to spending a large
+compute budget on a step that does not pay for itself. This is not a claim that the two are uncorrelated.
 They are correlated, and the interface metric ranks the recipes in the right order most of
 the time. The problem is the magnitude: the interface metric says the gap between two
 recipes is large, end-to-end training closes almost all of it, and the residual is small
@@ -68,7 +76,8 @@ that the failure was not visible from the interface metrics themselves.
 1. A four-way demonstration that interface-level rankings in a stagewise LM distillation
    pipeline collapse by roughly 10x under a modest end-to-end budget (Section 4).
 2. An equal-FLOPs comparison against random initialisation, with the accounting stated,
-   showing the pipeline loses (Section 5).
+   showing that the noise-fed pipeline loses by three times the measured noise while the
+   same construction on harvested activations ties (Section 5).
 3. A measurement of how composition error actually behaves in this architecture, which
    contradicts the compounding model usually assumed for it (Section 6).
 4. The interface-level measurements themselves, including beta and the anchor crossover,
@@ -185,17 +194,36 @@ gives 6.050e17. The harvest of teacher activations and top-k log-probs over the 
 is **6.6671e17**. Dividing by 6 P_student gives **1.8367e8** tokens, which is what the
 random-init arm is entitled to spend on healing to match.
 
-| arm | heal tokens | held-out loss |
-|---|---|---|
-| stagewise, two trajectories | 1e7 | 3.7221 / 3.7900, mean **3.7560** |
-| stagewise after on-policy retraining | 1e7 | 3.6375 / 3.6829, mean **3.6602** |
-| random init | **1.8367e8** | **3.5430** |
+The oracle stack, whose stages are trained on harvested real activations, was built from
+the same six 1e8-position cells and the same harvest, so it sits at the identical budget
+and the comparison applies to it unchanged. We report it here because it separates two
+questions that the rest of the paper runs together: whether *stagewise construction* pays,
+and whether *synthesizing the interface activations* pays.
 
-The random arm wins by **0.213 nats** against the stagewise mean, and by 0.179 against its
-better trajectory. The within-arm spread is 0.068, so the margin is about three times the
-noise. It also beats the on-policy-retrained stack by 0.117, and that stack cost a further
-6.05e16 FLOPs to build, so at a properly equal budget it is further behind than that
-figure suggests.
+| arm | heal tokens | held-out loss | gap to random |
+|---|---|---|---|
+| random init | **1.8367e8** | **3.5430** | |
+| oracle, real activations | 1e7 | **3.4850** | **+0.058** |
+| noise recipe, two trajectories | 1e7 | 3.7221 / 3.7900, mean **3.7560** | **-0.213** |
+| noise recipe + on-policy retraining | 1e7 | 3.6375 / 3.6829, mean **3.6602** | **-0.117** |
+
+The noise recipe loses by **0.213 nats** against its two-trajectory mean, and by 0.179
+against its better trajectory. The measured within-arm spread is 0.068, so that margin is
+about three times the noise. On-policy retraining recovers about half of it and still
+loses by 0.117, and that stack cost a further 6.05e16 FLOPs to build, so at a properly
+equal budget it is further behind than the figure suggests.
+
+**The oracle is a tie, not a win.** It comes out 0.058 nats ahead of random init, which is
+*inside* the 0.068 spread we measured on the arms that were replicated, and both cells here
+are single runs. We therefore read the real-activation stack as indistinguishable from
+random initialisation at equal FLOPs, not as beating it. This is the sharpest statement the
+data supports, and it locates the failure precisely: **stagewise construction on harvested
+activations roughly breaks even, and replacing those activations with synthesized ones is
+what costs 0.21 nats.**
+
+That distinction matters for what this paper is claiming about prior work. Puzzle-style
+blockwise distillation on real activations is not refuted here. What is refuted is the step
+this project added on top of it.
 
 **Two handicaps, both favouring the method.** We recorded these before the run finished.
 First, the random arm is FLOPs-matched but data-limited: it makes about 17.5 passes over
@@ -204,9 +232,15 @@ the same declared 1e7-token slice, while the stagewise arm's heal makes one. A m
 on one schedule: 5e-5 against 1e-4, which interpolating from the 1e6 probe costs the random
 arm roughly 0.2 nats.
 
-Both handicaps run against the arm that won. Had the comparison gone the other way, they
-would have made the margin an upper bound and the conclusion arguable. Because it went
-this way, they are reasons to think the true margin is larger.
+Both handicaps run against the random arm, which is the arm that beat the noise recipe.
+Had that comparison gone the other way they would have made the margin an upper bound and
+the conclusion arguable; because it went this way they are reasons to think the true margin
+is larger.
+
+They cut the other way for the oracle. That arm ran at 1e-4 while the random arm ran at
+5e-5, so roughly 0.2 nats of the oracle's apparent position is schedule rather than method,
+which is more than the 0.058 that separates them. An oracle that ties while holding a
+handicap worth more than the gap is not a result we would push on, and we do not.
 
 ## 6. Why: composition accumulates, it does not compound
 
@@ -297,20 +331,25 @@ as a per-stage gate.
 overstatement is characteristic of this architecture, this depth, this width ratio, or
 transformers generally, we did not measure.
 
-**The equal-FLOPs cell has one seed.** The stagewise arms were run on two heal
-trajectories; the random arm at 1.8367e8 tokens was not, because it costs about four hours
-of A100 time. The margin is about three times the stagewise spread, so a flip would take a
-three-sigma excursion, but the cell is unreplicated and we say so.
+**Two of the equal-FLOPs cells have one seed.** The noise-recipe arms were run on two heal
+trajectories each; the random arm at 1.8367e8 tokens and the oracle arm were not, because
+the former costs about four hours of A100 time. For the noise recipe the margin is about
+three times the measured spread, so a flip would take a three-sigma excursion. For the
+oracle-against-random comparison, which is a 0.058 gap between two single runs against a
+spread of 0.068, we can say only that we cannot separate them, and a replicate is the
+obvious next measurement.
 
 **The random arm recycles data.** As stated in Section 5, it makes 17.5 passes over one
 1e7-token slice. This biases against it, which is the safe direction here, but it means
 the reported margin is not the margin a data-unconstrained baseline would achieve.
 
-**Two named baselines were not run.** A Puzzle-style blockwise distillation on real
-activations at matched real-token budget, and self-generated-text distillation at matched
-compute, are the two comparisons a reader will want. They were scheduled for the phase this
-result cancelled. What we compare against is random initialisation at equal FLOPs, which is
-the weaker baseline to beat and which the method nonetheless loses to.
+**One named baseline was not run.** Self-generated-text distillation at matched compute is
+the comparison a reader will still want, and it was scheduled for the phase this result
+cancelled. Puzzle-style blockwise distillation on real activations is, in effect, our
+oracle arm, though it is our reimplementation at our scale and not their system, and it was
+not tuned as a baseline in its own right. Our headline comparison is against random
+initialisation at equal FLOPs, which is the weaker baseline to beat and which the noise
+recipe nonetheless loses to.
 
 **The Lipschitz estimator is undersampled**, as Section 6 says. It perturbs two sequences.
 The contractive stages replicate across platforms within 3.1% and the expansive one does
@@ -355,9 +394,10 @@ second-order structure, the anchor crossover is near 250k real positions per int
 composition error in this architecture accumulates rather than compounds.
 
 The pipeline those measurements were meant to support does not work. At equal total FLOPs
-it loses to random initialisation trained for longer, by three times the noise, with two
-handicaps applied in its own favour. And it loses in a way that none of the interface-level
-measurements predicted: every one of them ranked the design choices clearly, and every one
+it loses to random initialisation trained for longer, by three times the measured noise,
+with two handicaps applied in its own favour. The same construction fed harvested
+activations instead ties, so what fails is the synthesis, not the decomposition. And it
+fails in a way that none of the interface-level measurements predicted: every one of them ranked the design choices clearly, and every one
 of those rankings shrank by about an order of magnitude the moment the composed model saw
 end-to-end gradients.
 

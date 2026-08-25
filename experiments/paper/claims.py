@@ -91,6 +91,11 @@ def phase2(reg):
     claim(reg, "kill.gap_vs_seed0", rnd_eq - L("stagewise", 1e7), "derived", doc=-0.1792)
     claim(reg, "kill.gap_vs_mean", rnd_eq - float(np.mean(sw)), "derived", doc=-0.2131)
     claim(reg, "kill.gap_vs_dagger", rnd_eq - float(np.mean(dg)), "derived")
+    # The oracle stack was built from the same six 1e8-position cells and the same
+    # harvest, so it sits at the identical end-to-end budget and the kill criterion
+    # applies to it too. It is the arm that answers "does stagewise construction pay",
+    # separately from "does synthesizing the activations pay".
+    claim(reg, "kill.gap_vs_oracle", rnd_eq - L("oracle", 1e7), "derived")
     claim(reg, "criterion5.gap", L("stagewise", 1e7) - L("oracle", 1e7), "derived", doc=0.2371)
     claim(reg, "dagger.healed_effect", float(np.mean(sw)) - float(np.mean(dg)), "derived")
     claim(reg, "dagger.unhealed_effect",

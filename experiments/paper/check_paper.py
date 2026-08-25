@@ -43,6 +43,7 @@ BOUND = [
     ("0.334", "beta[G_iid]", 3),
     ("0.206", "beta[I_iid]", 3),
     ("113", "phase1_cells", 0),
+    ("0.058", "kill.gap_vs_oracle", 3),
 ]
 
 
