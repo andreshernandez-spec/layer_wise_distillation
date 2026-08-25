@@ -1,0 +1,107 @@
+% Bibliography for paper/paper.md.
+%
+% Provenance matters here as much as it does for the numbers. Entries marked VERIFIED
+% were fetched from arxiv.org/abs/<id> during the 22 Aug 2026 literature pass recorded
+% in docs/00-literature.md. Entries marked UNVERIFIED were supplied from memory while
+% drafting and MUST be checked before submission: the id, the author list and the year
+% are all plausible and none of them has been fetched.
+
+% ---------- VERIFIED (docs/00-literature.md, 22 Aug 2026) ----------
+
+@article{shao2020neighbourhood,
+  title   = {Neighbourhood Distillation: On the benefits of non end-to-end distillation},
+  author  = {Shao, Laetitia and others},
+  journal = {arXiv preprint arXiv:2010.01189},
+  year    = {2020},
+  note    = {VERIFIED. CNN sub-networks distilled independently; reports that Gaussian
+             noise inputs can substitute for real ones. The origin of the idea this
+             paper tests on transformers.}
+}
+
+@article{bercovich2024puzzle,
+  title   = {Puzzle: Distillation-Based NAS for Inference-Optimized LLMs},
+  author  = {Bercovich, Akhiad and others},
+  journal = {arXiv preprint arXiv:2411.19146},
+  year    = {2024},
+  note    = {VERIFIED. Blockwise local knowledge distillation for LLMs on real
+             activations, gradients isolated across blocks, order 1e9 real tokens.
+             Our oracle arm is this construction at our scale.}
+}
+
+@article{liu2023llmqat,
+  title   = {LLM-QAT: Data-Free Quantization Aware Training for Large Language Models},
+  author  = {Liu, Zechun and others},
+  journal = {arXiv preprint arXiv:2305.17888},
+  year    = {2023},
+  note    = {VERIFIED. Self-generated-text distillation, end to end. The baseline a
+             reader will propose instead, and the one we did not run.}
+}
+
+@article{xiao2023alpha,
+  title   = {Heavy-tailed regularization of weight matrices in deep neural networks},
+  author  = {Xiao, Xuanzhe and Li, Zeng and Xie, Chuanlong and Zhou, Fengwei},
+  journal = {arXiv preprint arXiv:2304.02911},
+  year    = {2023},
+  note    = {VERIFIED. The one attempt to use HT-SR alpha as a training loss rather
+             than a controller; CIFAR scale, needed gating to avoid over-regularizing.}
+}
+
+@article{sigreg2026lm,
+  title   = {Regularize or Localize},
+  journal = {arXiv preprint arXiv:2607.17019},
+  year    = {2026},
+  note    = {VERIFIED but POST-CUTOFF: docs/00-literature.md flags anything from
+             March 2026 onward as resting only on a fetched page. Re-read before
+             citing. Applies a sketched distributional regularizer to LM hidden
+             states during continued pretraining.}
+}
+
+% ---------- UNVERIFIED: check the id, authors and year before submitting ----------
+
+@inproceedings{raikwar2022noise,
+  title     = {Discovering and Overcoming Limitations of Noise-engineered Data-free
+               Knowledge Distillation},
+  author    = {Raikwar, Piyush and Mishra, Deepak},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2022},
+  note      = {UNVERIFIED page numbers/volume. No arXiv id; code at
+               github.com/Piyush-555/GaussianDistillation. Identifies activation
+               distribution shift as the failure mode of end-to-end Gaussian-noise KD,
+               which is the diagnosis interface injection answers.}
+}
+
+@article{biderman2023pythia,
+  title   = {Pythia: A Suite for Analyzing Large Language Models Across Training and
+             Scaling},
+  author  = {Biderman, Stella and others},
+  journal = {arXiv preprint arXiv:2304.01373},
+  year    = {2023},
+  note    = {UNVERIFIED id. The teacher family used throughout.}
+}
+
+@article{gao2020pile,
+  title   = {The Pile: An 800GB Dataset of Diverse Text for Language Modeling},
+  author  = {Gao, Leo and others},
+  journal = {arXiv preprint arXiv:2101.00027},
+  year    = {2020},
+  note    = {UNVERIFIED id. Source of the declared slice and the held-out set.}
+}
+
+@inproceedings{ross2011dagger,
+  title     = {A Reduction of Imitation Learning and Structured Prediction to
+               No-Regret Online Learning},
+  author    = {Ross, Stephane and Gordon, Geoffrey J. and Bagnell, J. Andrew},
+  booktitle = {AISTATS},
+  year      = {2011},
+  note      = {UNVERIFIED id/venue details. The on-policy retraining in Section 4 is
+               this idea applied per stage.}
+}
+
+@article{martin2021predicting,
+  title   = {Predicting trends in the quality of state-of-the-art neural networks
+             without access to training or testing data},
+  author  = {Martin, Charles H. and Peng, Tongsu and Mahoney, Michael W.},
+  journal = {Nature Communications},
+  year    = {2021},
+  note    = {UNVERIFIED. The HT-SR alpha line; alpha as a diagnostic, never a loss.}
+}

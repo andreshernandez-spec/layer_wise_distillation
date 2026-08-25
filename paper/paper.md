@@ -44,10 +44,10 @@ The appeal of stagewise, or blockwise, distillation is structural. If a student 
 be trained against its teacher stage in isolation, then the expensive part of
 distillation becomes embarrassingly parallel, the memory needed at any moment is the
 memory for one stage, and the stages can be trained in any order or on any machine.
-NVIDIA's Puzzle [Bercovich et al., 2024] does exactly this at production scale on real
+NVIDIA's Puzzle [bercovich2024puzzle] does exactly this at production scale on real
 activations. If the activations themselves could be synthesized rather than harvested,
 the data requirement would fall as well, which is what Neighbourhood Distillation
-[Shao et al., 2020] demonstrated for CNN sub-networks with Gaussian inputs.
+[shao2020neighbourhood] demonstrated for CNN sub-networks with Gaussian inputs.
 
 A pipeline of that shape has many design decisions: what distribution to feed each stage,
 how many real anchors to mix in, how to normalize the interface, whether to retrain
@@ -376,21 +376,21 @@ value would have to live.
 
 ## 9. Related work
 
-**Blockwise and neighbourhood distillation.** Shao et al. [2020] distil CNN sub-networks
+**Blockwise and neighbourhood distillation.** Shao et al. [shao2020neighbourhood] distil CNN sub-networks
 independently and report that Gaussian noise inputs can substitute for real ones, beating
-end-to-end baselines under noise. Puzzle [Bercovich et al., 2024] is the production LLM
+end-to-end baselines under noise. Puzzle [bercovich2024puzzle] is the production LLM
 version on real activations, with gradients isolated across blocks and roughly 1e9 real
 tokens. Our stagewise arm is Puzzle-like construction with the activations partly
 synthesized; our oracle arm is Puzzle-like construction with them harvested.
 
-**Noise-driven data-free distillation.** Raikwar and Mishra [NeurIPS 2022] train
+**Noise-driven data-free distillation.** Raikwar and Mishra [raikwar2022noise] train
 end-to-end under Gaussian input noise and identify the shift in hidden-layer activation
 distribution as the failure mode. Injecting moment-matched noise at the interface, as we
 do, is the direct response to that diagnosis, and it does fix the distributional problem;
 the point of this paper is that fixing it is not sufficient.
 
 **Data-free KD for LLMs.** The 2024 to 2026 line substitutes model-generated text for data
-and trains end to end [LLM-QAT and successors]. None decomposes into stages or synthesizes
+and trains end to end [liu2023llmqat and successors]. None decomposes into stages or synthesizes
 interface activations. At matched compute this is the baseline a reader will propose
 instead, and we did not run it.
 
@@ -419,6 +419,16 @@ a stage interface should be quoted without the end-to-end number beside it, and 
 decision that looks decisive at the interface should be assumed to be worth about a tenth
 of what it appears to be worth. We found this at four independent levels, including the
 level at which it invalidated the method.
+
+## A note on the references
+
+`paper/refs.bib` marks each entry VERIFIED or UNVERIFIED. The verified ones were fetched
+from arXiv during a literature pass recorded in `docs/00-literature.md`; the unverified
+ones were written from memory while drafting and their ids, author lists and years have
+not been checked. They are plausible and they are not evidence. Anything dated March 2026
+or later rests only on a fetched abstract page and should be re-read before it is cited.
+This is the same standard the paper applies to its own numbers, and it should be cleared
+before submission rather than at it.
 
 ## Reproducibility
 
