@@ -238,6 +238,28 @@ That distinction matters for what this paper is claiming about prior work. Puzzl
 blockwise distillation on real activations is not refuted here. What is refuted is the step
 this project added on top of it.
 
+**Is FLOPs the right currency?** The case for stagewise construction is parallelism, and
+a reader is entitled to ask why we judge it on a serial quantity. Three things, and the
+first two go against the method.
+
+Cost is FLOPs. Six stages trained concurrently on six devices bill six device-hours, the
+same as one device for six hours, so for anyone paying for compute the comparison above
+is the one that matters.
+
+If the constraint is wall-clock rather than cost, stagewise parallelism is real but it is
+not exclusive: end-to-end training parallelises too, by data parallelism, and the random
+arm would get the same speedup from the same six devices while keeping its FLOPs
+advantage. What stagewise has that data parallelism does not is that its concurrency needs
+no gradient communication at all, where data parallelism needs an all-reduce per step.
+That is a genuine advantage at large device counts or on a poor interconnect. It is also
+second order against a 0.213-nat deficit, and we did not measure it.
+
+The memory argument is the one that survives, and only partly. Training a stage in
+isolation needs one stage resident rather than the whole model, which is a real benefit if
+the teacher does not fit. But the heal does not decompose: it trains the composed student
+end to end, and the heal is what makes the stagewise stack competitive at all. So the peak
+memory of the full recipe is set by the phase this paper shows you cannot skip.
+
 **Two handicaps, both favouring the method.** We recorded these before the run finished.
 First, the random arm is FLOPs-matched but data-limited: it makes about 17.5 passes over
 the same declared 1e7-token slice, while the stagewise arm's heal makes one. A model given
@@ -371,6 +393,12 @@ recipe nonetheless loses to.
 **The Lipschitz estimator is undersampled**, as Section 6 says. It perturbs two sequences.
 The contractive stages replicate across platforms within 3.1% and the expansive one does
 not.
+
+**We measured cost in FLOPs, not wall-clock or communication volume.** Section 5 argues
+that this is the right currency and that stagewise parallelism is not exclusive to
+stagewise, but we did not measure a wall-clock comparison against data-parallel end-to-end
+training, and on a sufficiently poor interconnect the communication-free property of
+stagewise training could matter more than the FLOPs deficit.
 
 **We did not test the no-heal regime properly.** If a composed model must ship without any
 end-to-end training, the unhealed numbers are the operative ones and they favour the method
