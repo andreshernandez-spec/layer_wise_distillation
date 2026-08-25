@@ -32,8 +32,11 @@ practice, and this is an instrumented case of that practice pointing the wrong w
 
 Supporting measurements, each with a committed script, a recorded environment and a seed:
 
-- **β ≈ 0.32** in ε(Q) = c·Q^(−β) + ε_∞, the same exponent whichever input measure feeds
-  the stage. `docs/02`.
+- **β ≈ 0.32** in ε(Q) = c·Q^(−β) + ε_∞, and the arms that work agree inside each other's
+  confidence intervals: live real 0.326, recycled anchors 0.336, the noise recipe 0.313.
+  Isotropic noise, whose inputs carry no covariance structure, is the exception at 0.206.
+  The CIs are wide (upper bounds 0.48 to 0.58), so this pins the exponent's scale, not
+  its third digit. `docs/02`.
 - **The anchor crossover is at about 250k real positions per interface.** Below it noise
   is worth up to 0.77 nats; at 0.95M anchors it is worth nothing. `docs/02`.
 - **Noise is a regularizer against over-fitting the interface objective**, not a

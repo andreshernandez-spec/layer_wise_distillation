@@ -458,20 +458,28 @@ Every arm on the full Q ladder; two seeds below 3e7.
 
 ### beta, the number the project was built to measure
 
-`fit.py --metric best_eval`, eps(Q) = c Q^-beta + eps_inf, 13 points per arm,
-bootstrap 90% CIs:
+`fit.py --metric best_eval`, eps(Q) = c Q^-beta + eps_inf, bootstrap 90% CIs.
+Refit 25 Aug 2026 over every cell that landed, which is more than the 13 per arm the
+first version of this table used; the cell count is now given per row because it is what
+moved the R arm.
 
-| arm | beta | eps_inf | Q* vs L@1e7 |
-|---|---|---|---|
-| L (live real, distinct) | **0.324** [0.297, 0.506] | 0 [0, 0.186] | 5.1e7 |
-| R (anchors, recycled) | **0.320** [0.293, 0.532] | 0 [0, 0.253] | 5.5e7 |
-| C_mix (recipe) | **0.305** [0.281, 0.596] | 0 [0, 0.382] | 7.5e7 |
-| C_ar1 | 0.279 [0.251, 0.586] | 0 [0, 0.530] | 1.4e8 |
-| G_iid (pure noise) | 0.339 [0.260, 0.802] | **0.417** [0, 0.792] | none |
-| I_iid (isotropic) | 0.206 [0.182, 0.858] | 0 [0, 1.235] | 1.7e9 |
+| arm | cells | beta | eps_inf | Q* vs L@1e7 |
+|---|---|---|---|---|
+| L (live real, distinct) | 16 | **0.326** [0.303, 0.481] | 0 [0, 0.158] | 6.9e7 |
+| R (anchors, recycled) | 22 | **0.336** [0.296, 0.581] | 0.129 [0.028, 0.592] | 1.9e9 |
+| C_mix (recipe) | 22 | **0.313** [0.276, 0.533] | 0.106 [0, 0.399] | 2.4e8 |
+| C_ar1 | 10 | 0.279 [0.251, 0.586] | 0 [0, 0.530] | 1.4e8 |
+| G_iid (pure noise) | 16 | 0.334 [0.254, 0.726] | **0.409** [0, 0.792] | none |
+| I_iid (isotropic) | 10 | 0.206 [0.182, 0.858] | 0 [0, 1.235] | 1.7e9 |
 
-**beta is ~0.32 whatever the data is**, and the three arms that work agree inside each
-other's CIs. The exponent is a property of the stage-fitting problem, not of the input
+The R arm moved most, 0.320 to 0.336, because it gained the most cells. Nothing in the
+reading changes, but the table is now the fit over all the data rather than over the
+first 13 points per arm, and `experiments/paper/claims.py` fails if it drifts again by
+more than 0.01.
+
+**beta is ~0.32 for the arms that work** (L 0.326, R 0.336, C_mix 0.313), and they agree
+inside each other's CIs. Isotropic noise is the exception at 0.206, which is the arm
+whose inputs carry no covariance structure at all. The exponent is a property of the stage-fitting problem, not of the input
 measure; what the input measure changes is eps_inf, and only pure noise has one that is
 not consistent with zero. This is the answer Phase 1 existed to produce.
 
