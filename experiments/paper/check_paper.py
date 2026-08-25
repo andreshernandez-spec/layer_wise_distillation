@@ -57,6 +57,19 @@ BOUND = [
 ]
 
 
+def check_tables(text):
+    """Each table in the paper must be byte-identical to what tables.py generates."""
+    import subprocess as sp
+    bad = []
+    for name in ("interface", "heal", "equalflops", "drift"):
+        out = sp.run([sys.executable, "experiments/paper/tables.py", "--name", name],
+                     cwd=ROOT, capture_output=True, text=True).stdout
+        body = out.split("\n", 1)[1].rsplit("<!-- /TABLE", 1)[0].strip()
+        if body and body not in text:
+            bad.append(f"table {name!r} in the paper differs from tables.py output")
+    return bad
+
+
 def main():
     reg_path = ROOT / "paper" / "claims.json"
     subprocess.run([sys.executable, "experiments/paper/claims.py", "--json", str(reg_path)],
@@ -82,9 +95,10 @@ def main():
             ok = f"{abs(v):.{digits}f}" == literal
         if not ok:
             bad.append(f"{literal!r} does not round from {key} = {v:.6g}")
+    bad += check_tables(text)
     for b in bad:
         print("MISMATCH:", b)
-    print(f"\n{len(BOUND)} paper numbers checked, {len(bad)} mismatched")
+    print(f"\n{len(BOUND)} paper numbers and 4 tables checked, {len(bad)} mismatched")
     return 1 if bad else 0
 
 

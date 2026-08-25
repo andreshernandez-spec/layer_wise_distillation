@@ -126,7 +126,7 @@ trained stage is substituted into the otherwise-real model:
 | L (live real) | 1e7 | 0 | 0.353 | 0.452 |
 | R (anchors, recycled) | 0.95e6 | 0 | 0.412 | 0.450 |
 | C_mix (recipe) | 0.95e6 | 9.1e7 | 0.463 | 0.527 |
-| G_iid (pure noise) | 0 | 1e8 | 11.07 | 7.92 |
+| G_iid (pure noise) | 0 | 1e8 | 11.074 | 7.921 |
 
 Two things are already visible. Recycling 0.95M distinct real positions about a hundred
 times matches the live-real oracle that sees ten times more distinct data (0.450 against
@@ -147,10 +147,10 @@ stagewise and oracle arms; the cold start diverges there at 1e7 tokens and runs 
 | heal tokens | random init | stagewise (noise recipe) | oracle (real activations) |
 |---|---|---|---|
 | 0 | 12.9942 | 9.5702 | 6.7196 |
-| 1e5 | 8.5325 | 6.9982 | 5.4803 |
-| 1e6 | 6.8356 | 5.5692 | 4.7819 |
-| 3e6 | 5.9450 | 5.0123 | 4.2673 |
-| 1e7 | 5.2693 | 3.7221 | 3.4850 |
+| 1e+05 | 8.5325 | 6.9982 | 5.4803 |
+| 1e+06 | 6.8356 | 5.5692 | 4.7819 |
+| 3e+06 | 5.9450 | 5.0123 | 4.2673 |
+| 1e+07 | 5.2693 | 3.7221 | 3.4850 |
 
 The gap between training stages on real activations and training them on the noise recipe
 is 2.85 nats before healing and **0.237** after 1e7 tokens. The recipe choice that the
@@ -205,7 +205,7 @@ and whether *synthesizing the interface activations* pays.
 |---|---|---|---|
 | random init | **1.8367e8** | **3.5430** | |
 | oracle, real activations | 1e7 | **3.4850** | **+0.058** |
-| noise recipe, two trajectories | 1e7 | 3.7221 / 3.7900, mean **3.7560** | **-0.213** |
+| noise recipe | 1e7 | 3.7221 / 3.7900, mean **3.7560** | **-0.213** |
 | noise recipe + on-policy retraining | 1e7 | 3.6375 / 3.6829, mean **3.6602** | **-0.117** |
 
 The noise recipe loses by **0.213 nats** against its two-run mean, and by 0.179 against its
@@ -265,7 +265,7 @@ direction that matters.
 | interface | 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|
 | realized drift (noise recipe) | 0.637 | 1.171 | 1.541 | 1.549 | 1.748 | **2.335** |
-| pure propagation, no fresh error | 0.637 | 0.277 | 0.121 | 0.057 | 0.041 | **0.029** |
+| pure propagation, no fresh error | 0.637 | 0.277 | 0.121 | 0.056 | 0.041 | **0.029** |
 
 Take the drift measured at the first interface and propagate it through the stages that
 follow, multiplying by each one's measured Lipschitz ratio and adding nothing. Because
