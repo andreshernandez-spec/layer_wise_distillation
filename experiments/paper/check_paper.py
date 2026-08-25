@@ -44,6 +44,16 @@ BOUND = [
     ("0.206", "beta[I_iid]", 3),
     ("113", "phase1_cells", 0),
     ("0.058", "kill.gap_vs_oracle", 3),
+    ("0.353", "iface.L.eps", 3),
+    ("0.452", "iface.L.stitch", 3),
+    ("0.412", "iface.R.eps", 3),
+    ("0.450", "iface.R.stitch", 3),
+    ("0.463", "iface.C_mix.eps", 3),
+    ("0.527", "iface.C_mix.stitch", 3),
+    ("11.07", "iface.G_iid.eps", 2),
+    ("7.92", "iface.G_iid.stitch", 2),
+    ("0.773", "crossover.noise_worth@94208", 3),
+    ("0.142", "crossover.noise_worth@188416", 3),
 ]
 
 

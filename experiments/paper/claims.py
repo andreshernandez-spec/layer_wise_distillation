@@ -64,6 +64,26 @@ def phase1(reg):
         reg[f"beta[{arm}]"]["n_cells"] = len(pts)
     claim(reg, "phase1_cells", float(len(rows)), P1)
 
+    # Section 3's table and the anchor crossover, both transcribed into the paper from
+    # docs/02 and until now unchecked against the records.
+    def cell(stem):
+        return json.load(open(f"{P1}/{stem}.json"))
+    for arm, stem, e, st in [("L", "L_iid_q1e08_s0", 0.353, 0.452),
+                             ("R", "R_iid_q1e08_s0", 0.412, 0.450),
+                             ("C_mix", "C_mix_q1e08_s0", 0.463, 0.527),
+                             ("G_iid", "G_iid_q1e08_s0", 11.07, 7.92)]:
+        r = cell(stem)
+        claim(reg, f"iface.{arm}.eps", r["final_eval"], stem, doc=e, tol=2e-3)
+        claim(reg, f"iface.{arm}.stitch", r["stitch"]["delta"], stem, doc=st, tol=2e-3)
+
+    # noise is worth (R stitch - C stitch) at each anchor budget; 46/92/184 sequences
+    # of 2048, then the full 512-sequence anchor set
+    for tag, pos, doc in [("_a46", 94208, 0.773), ("_a92", 188416, 0.142),
+                          ("_a184", 376832, -0.045), ("", 950272, -0.078)]:
+        r_, c_ = cell(f"R_iid_q1e08_s0{tag}"), cell(f"C_mix_q1e08_s0{tag}")
+        claim(reg, f"crossover.noise_worth@{pos}", r_["stitch"]["delta"] - c_["stitch"]["delta"],
+              f"{stem} pair{tag or ' (full anchors)'}", doc=doc, tol=2e-3)
+
 
 def phase2(reg):
     heals = {}
