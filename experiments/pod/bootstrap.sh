@@ -54,6 +54,20 @@ assert m["sha256"] == want, f"slice sha mismatch: {m['sha256']}"
 print("slice sha OK", m["tokens"], "tokens")
 PY
 
+# Inputs this pod cannot regenerate, checked before anything touches the GPU. The
+# decontamination record and the held-out set are produced once, on the laptop, from
+# downloaded eval suites and a Pile-test shard; a fresh pod has neither, and without
+# this check the harvest fails two minutes in with a FileNotFoundError (25 Aug 2026).
+missing=""
+for f in out/slice/decontam.json out/heldout/heldout_rows.npy; do
+  [ -f "$f" ] || missing="$missing $f"
+done
+if [ -n "$missing" ]; then
+  echo "== MISSING INPUTS, upload them before bootstrapping:$missing"
+  exit 1
+fi
+echo "== inputs present: decontam.json, heldout_rows.npy"
+
 # harvest: statistics for every interface, anchor refs only where Phase 1 needs them
 if [ ! -f out/harvest-1.4b/stats_iface6.npz ]; then
   python experiments/phase0/run.py ${HARVEST_CFG:-experiments/pod/harvest-1.4b-pod.yaml}
