@@ -1,16 +1,19 @@
 # G2 verdict
 
-**Status: final, 24 Aug 2026, amended 25 Aug.** The kill criterion fires. At equal
-end-to-end FLOPs a randomly initialised student that simply trains longer reaches
-**3.5430** against the noise-recipe stack's **3.7560** (mean of two heal runs). Per the
-pre-registered gate in `docs/03`, **Phase 3 does not run** and the write-up becomes
-Phase 1's measurement plus this negative.
+**Status: final, 24 Aug 2026, amended 25 Aug after a replication pass.** The kill criterion
+fires. At equal end-to-end FLOPs a randomly initialised student that simply trains longer
+reaches **3.5520** against the noise-recipe stack's **3.7283**, a gap of **0.176** nats
+against a measured run-to-run spread of about 0.02. Per the pre-registered gate in
+`docs/03`, **Phase 3 does not run** and the write-up becomes Phase 1's measurement plus
+this negative.
 
 **Amended 25 Aug**, because the first version of this verdict overstated. The oracle
 stack, whose stages are trained on harvested real activations, was built from the same six
 1e8-position cells and the same harvest, so it sits at the identical budget and the
-criterion applies to it too. It reaches **3.4850**, which is 0.058 ahead of random init
-and smaller than any spread we can measure, so it **ties**. What fails is synthesizing the
+criterion applies to it too. It reaches **3.4931**, which is 0.059 ahead of random init and about three times the
+run-to-run noise, reproducing in both environments (0.058 on the first machine, 0.064 on
+the second). So it does not merely tie: it leads, by less than the schedule advantage it
+holds, which is why we do not push on it. What fails is synthesizing the
 interface activations, not decomposing the model into stages. Stated the other way: this
 result does not refute Puzzle-style blockwise distillation on real activations, and the
 first draft read as though it did.
@@ -235,8 +238,8 @@ structure it builds is real and measurable at every interface, and it is not wor
 costs.
 
 Be precise about what that kills. Stagewise construction on harvested real activations
-ties at equal FLOPs (3.4850 against 3.5430, inside the spread), so the decomposition is
-roughly free and the thing that costs 0.21 nats is replacing harvested activations with
+leads at equal FLOPs (3.4931 against 3.5520) rather than trailing, so the decomposition is
+not what fails; the thing that costs 0.176 nats is replacing harvested activations with
 synthesized ones. This project's contribution was the synthesis, and the synthesis is what
 does not pay.
 
@@ -292,3 +295,41 @@ within-arm spread of 0.07, and it loses despite two handicaps applied in its own
 The gate fires, Phase 3 does not run, and the result worth publishing is the one about
 interface-level metrics overstating by an order of magnitude what survives end-to-end
 training.
+
+
+---
+
+## Replication pass, 25 Aug 2026
+
+The first version of this verdict quoted a 0.213-nat margin against a 0.068 "within-arm
+spread". Both figures were wrong, in opposite directions and for the same reason: the two
+runs of each noise-recipe arm differed in warmup as well as heal seed, because the
+configuration synced to the pod had drifted back to `heal_warmup: 50` while the cells they
+were meant to replicate ran at 500. So 0.068 was a schedule effect, not noise, and the
+3.7560 mean was contaminated by a mis-scheduled run.
+
+A second pod (`224y0qmd2809fo`, 3.9 h, $6.2) reran four cells on the intended schedule,
+including a control: the oracle cell at seed 0, which had to reproduce the published
+3.4850 before any of the rest could be interpreted.
+
+| cell | n (matched) | mean | spread |
+|---|---|---|---|
+| random init @1.8367e8 | 2 | 3.5520 | 0.0181 |
+| oracle, real activations @1e7 | 3 | 3.4931 | 0.0135 |
+| noise recipe @1e7 | 2 | 3.7283 | 0.0123 |
+| noise + on-policy @1e7 | 1 | 3.6375 | n/a |
+
+**The control did not reproduce exactly**: 3.4985 against 3.4850, a difference of 0.0135,
+with the same seed, the same schedule, and bit-identical checkpoints and eval set. What
+differed was the machine and a top-k store rebuilt from the declared slice, since a
+fp16 teacher forward is not bitwise across machines. Holding the machine fixed and varying
+only the seed moves the same cell by 0.0028.
+
+So the honest decomposition of the noise floor is **environmental 0.0135, stochastic
+0.0028, total about 0.02**, and the useful lesson is that on this pipeline *which machine
+you are on matters five times more than which seed you use*. Any future claim at the 0.01
+level has to be made within one machine.
+
+Net effect on the verdict: the kill margin moves from 0.213 to **0.176** and is now quoted
+against a measured noise scale rather than one imported from Phase 1. It is about ten times
+the noise. The conclusion is unchanged and better supported.

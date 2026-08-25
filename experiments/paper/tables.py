@@ -16,17 +16,35 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from claims import P1, P2, load                      # noqa: E402
+from claims import P1, P2, P2S, load                 # noqa: E402
 
 BUDGETS = [1e5, 1e6, 3e6, 1e7]
 
 
+def _runs():
+    """Every heal run from both pods, grouped by arm and budget."""
+    d = {}
+    for src, pod in ((P2, "pod1"), (P2S, "pod2")):
+        for r in load(f"{src}/heal_*.json"):
+            r["_pod"] = pod
+            arm = r["init"] + r.get("tag", "").replace("_control", "")
+            d.setdefault((arm, r["tokens"]), []).append(r)
+    return d
+
+
+def _matched(runs, arm, tok):
+    return sorted(r["loss_after"] for r in runs.get((arm, tok), []) if r.get("warmup") == 500)
+
+
 def _heals():
+    """Seed-0, pod-1 record per cell, for the curve that was published first."""
     d = {}
     for r in load(f"{P2}/heal_*.json"):
-        hs = r.get("heal_seed", r["seed"])
-        key = r["init"] + r.get("tag", "") + (f"_h{hs}" if hs != r["seed"] else "")
-        d[(key, r["tokens"])] = r
+        if r.get("tag", ""):
+            continue
+        if r.get("heal_seed", r["seed"]) != r["seed"]:
+            continue
+        d[(r["init"], r["tokens"])] = r
     return d
 
 
@@ -59,22 +77,20 @@ def t_heal():
 
 
 def t_equalflops():
-    H = _heals()
-    def runs(pref, tok=1e7):
-        # every heal seed of this arm AT THIS BUDGET; the first version dropped the
-        # budget filter and averaged the whole curve into one cell
-        return sorted(H[k]["loss_after"] for k in H
-                      if k[1] == tok and (k[0] == pref or k[0].startswith(pref + "_h")))
-    sw, dg = runs("stagewise"), runs("stagewise_dagger")
-    rnd = H[("random_eqflops", 183670000.0)]["loss_after"]
-    orc = H[("oracle", 1e7)]["loss_after"]
+    R = _runs()
+    rnd = _matched(R, "random_eqflops", 183670000.0)
+    orc = _matched(R, "oracle", 1e7)
+    sw = _matched(R, "stagewise", 1e7)
+    dg = _matched(R, "stagewise_dagger", 1e7)
+    m = lambda v: float(np.mean(v))
     def cell(v):
-        return " / ".join(f"{x:.4f}" for x in v) + (f", mean **{np.mean(v):.4f}**" if len(v) > 1 else "")
+        return (f"**{m(v):.4f}**" + (f" (n={len(v)}, spread {np.ptp(v):.4f})"
+                                     if len(v) > 1 else " (n=1)"))
     out = ["| arm | heal tokens | held-out loss | gap to random |", "|---|---|---|---|",
-           f"| random init | **1.8367e8** | **{rnd:.4f}** | |",
-           f"| oracle, real activations | 1e7 | **{orc:.4f}** | **{rnd - orc:+.3f}** |",
-           f"| noise recipe | 1e7 | {cell(sw)} | **{rnd - np.mean(sw):+.3f}** |",
-           f"| noise recipe + on-policy retraining | 1e7 | {cell(dg)} | **{rnd - np.mean(dg):+.3f}** |"]
+           f"| random init | **1.8367e8** | {cell(rnd)} | |",
+           f"| oracle, real activations | 1e7 | {cell(orc)} | **{m(rnd) - m(orc):+.3f}** |",
+           f"| noise recipe | 1e7 | {cell(sw)} | **{m(rnd) - m(sw):+.3f}** |",
+           f"| noise recipe + on-policy retraining | 1e7 | {cell(dg)} | **{m(rnd) - m(dg):+.3f}** |"]
     return "\n".join(out)
 
 

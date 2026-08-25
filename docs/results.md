@@ -181,3 +181,11 @@ the interface activations, not the stagewise decomposition. Of the two asymmetri
 beforehand only the schedule one (5e-5 against 1e-4, worth ~0.2 nats) runs in the method's
 favour; the data recycling does not, since the stagewise stages recycle a 0.95M-position
 anchor set about a hundred times. **Phase 3 does not run.** `docs/06`.
+
+Replication pass, 25 Aug 2026 (`docs/06` tail, `out/phase2-seeds/`): four cells rerun on
+the intended schedule after the first repeats were found to have used warmup 50. Matched
+means: random init @1.8367e8 **3.5520** (n=2), oracle @1e7 **3.4931** (n=3), noise recipe
+@1e7 **3.7283** (n=2). Kill margin **-0.176** nats, about 10x the measured noise. The
+noise floor decomposes as environmental 0.0135 (same seed, different machine and a rebuilt
+top-k store) against stochastic 0.0028 (same machine, different seed), so which machine a
+cell ran on matters five times more than which seed. `docs/06`.

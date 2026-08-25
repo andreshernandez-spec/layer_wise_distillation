@@ -23,6 +23,7 @@ from fit import fit as fit_beta            # noqa: E402
 P1 = "out/phase1-1.4b-a100"
 P2 = "out/phase2-1.4b-a100"
 P2L = "out/phase2-1.4b"      # the laptop tree; docs/03's R-stack tables come from here
+P2S = "out/phase2-seeds"     # the 25 Aug replicate pod
 TEACHER_NONEMB, N_LAYERS, S, STUDENT_LAYERS = 1.21e9, 24, 6, 2
 
 
@@ -86,15 +87,34 @@ def phase1(reg):
 
 
 def phase2(reg):
-    heals = {}
-    for r in load(f"{P2}/heal_*.json"):
-        tag = r.get("tag", "")
-        hs = r.get("heal_seed", r["seed"])
-        key = r["init"] + tag + (f"_h{hs}" if hs != r["seed"] else "")
-        heals[(key, r["tokens"])] = r
+    # Both pods. A cell is identified by arm and budget; several runs of the same cell
+    # differ only in heal seed and in which machine they ran on.
+    runs = {}
+    for src, pod in ((P2, "pod1"), (P2S, "pod2")):
+        for f in sorted(glob.glob(f"{src}/heal_*.json")):
+            r = json.load(open(f))
+            r["_pod"], r["_file"] = pod, f
+            arm = r["init"] + r.get("tag", "").replace("_control", "")
+            runs.setdefault((arm, r["tokens"]), []).append(r)
 
-    def L(key, tok):
-        return heals[(key, tok)]["loss_after"]
+    def matched(arm, tok):
+        """Every run of this cell that used the intended schedule. The two 24 Aug
+        repeats ran at warmup 50 because the config synced to the pod had drifted, so
+        they are not replicates of anything and are excluded here."""
+        return sorted(r["loss_after"] for r in runs.get((arm, tok), [])
+                      if r.get("warmup") == 500)
+
+    def L(arm, tok):
+        """The seed-0 pod-1 value, for the cells the first write-up quoted."""
+        v = [r for r in runs.get((arm, tok), []) if r["_pod"] == "pod1"
+             and r.get("heal_seed", r["seed"]) == 0]
+        return v[0]["loss_after"]
+
+    heals = {}                                   # kept for the schedule audit below
+    for (arm, tok), rs in runs.items():
+        for r in rs:
+            hs = r.get("heal_seed", r["seed"])
+            heals[(arm + (f"_h{hs}" if hs else "") + ("_p2" if r["_pod"] == "pod2" else ""), tok)] = r
 
     # The schedule a cell ran at is part of the result. The pod's config was edited to
     # warmup 500 and the edit was never committed, so the repo could not reproduce its
@@ -103,7 +123,7 @@ def phase2(reg):
     for (key, tok), r in sorted(heals.items()):
         if r.get("lr") is None:
             continue
-        want_lr = 5e-5 if key.startswith("random") and tok > 1e7 else 1e-4
+        want_lr = 5e-5 if key.startswith("random_eqflops") else 1e-4
         if abs(r["lr"] - want_lr) > 1e-9 or r.get("warmup") != 500:
             off.append(f"{key}@{tok:.0e}(lr={r['lr']:g},warmup={r.get('warmup')})")
     claim(reg, "schedule.cells_checked", float(sum(1 for r in heals.values() if r.get("lr"))),
@@ -111,31 +131,32 @@ def phase2(reg):
     claim(reg, "schedule.off_schedule_cells", float(len(off)), "; ".join(off) or "none")
     reg["schedule.off_schedule_cells"]["which"] = off
 
-    sw = [L("stagewise", 1e7), L("stagewise_h1", 1e7)]
-    dg = [L("stagewise_dagger", 1e7), L("stagewise_dagger_h1", 1e7)]
-    rnd_eq = L("random_eqflops", 183670000.0)
+    sw, dg = matched("stagewise", 1e7), matched("stagewise_dagger", 1e7)
+    orc, rnd_eq = matched("oracle", 1e7), matched("random_eqflops", 183670000.0)
 
-    claim(reg, "heal.stagewise@1e7.mean", float(np.mean(sw)), f"{P2}/heal_stagewise_*", doc=3.7560)
-    claim(reg, "heal.stagewise@1e7.spread", float(np.ptp(sw)), f"{P2}/heal_stagewise_*", doc=0.0679)
-    claim(reg, "heal.dagger@1e7.mean", float(np.mean(dg)), f"{P2}/heal_stagewise_dagger_*", doc=3.6602)
-    claim(reg, "heal.dagger@1e7.spread", float(np.ptp(dg)), f"{P2}/heal_stagewise_dagger_*", doc=0.0454)
-    claim(reg, "heal.random_equalflops", rnd_eq, f"{P2}/heal_random_eqflops_*", doc=3.5430)
-    claim(reg, "heal.oracle@1e7", L("oracle", 1e7), f"{P2}/heal_oracle_*", doc=3.4850)
+    for name, v in (("stagewise", sw), ("dagger", dg), ("oracle", orc), ("random_eqflops", rnd_eq)):
+        claim(reg, f"heal.{name}.n", float(len(v)), "matched-schedule runs")
+        claim(reg, f"heal.{name}.mean", float(np.mean(v)), "matched-schedule runs")
+        claim(reg, f"heal.{name}.spread", float(np.ptp(v)), "matched-schedule runs")
     claim(reg, "heal.random@1e7", L("random", 1e7), f"{P2}/heal_random_C_t1e07*", doc=5.2693)
 
-    claim(reg, "kill.gap_vs_seed0", rnd_eq - L("stagewise", 1e7), "derived", doc=-0.1792)
-    claim(reg, "kill.gap_vs_mean", rnd_eq - float(np.mean(sw)), "derived", doc=-0.2131)
-    claim(reg, "kill.gap_vs_dagger", rnd_eq - float(np.mean(dg)), "derived")
-    # The oracle stack was built from the same six 1e8-position cells and the same
-    # harvest, so it sits at the identical end-to-end budget and the kill criterion
-    # applies to it too. It is the arm that answers "does stagewise construction pay",
-    # separately from "does synthesizing the activations pay".
-    claim(reg, "kill.gap_vs_oracle", rnd_eq - L("oracle", 1e7), "derived")
-    claim(reg, "criterion5.gap", L("stagewise", 1e7) - L("oracle", 1e7), "derived", doc=0.2371)
+    # same seed, same schedule, two machines and a rebuilt top-k store
+    o1 = [r["loss_after"] for r in runs[("oracle", 1e7)]
+          if r["_pod"] == "pod1" and r.get("heal_seed", r["seed"]) == 0][0]
+    o2 = [r["loss_after"] for r in runs[("oracle", 1e7)]
+          if r["_pod"] == "pod2" and r.get("heal_seed", r["seed"]) == 0][0]
+    claim(reg, "repro.cross_machine", abs(o1 - o2), "oracle seed 0 on both pods")
+    o_seeds = [r["loss_after"] for r in runs[("oracle", 1e7)] if r["_pod"] == "pod2"]
+    claim(reg, "repro.same_machine_seed", float(np.ptp(o_seeds)), "oracle both seeds on pod2")
+
+    claim(reg, "kill.gap_vs_mean", float(np.mean(rnd_eq)) - float(np.mean(sw)), "derived")
+    claim(reg, "kill.gap_vs_dagger", float(np.mean(rnd_eq)) - float(np.mean(dg)), "derived")
+    claim(reg, "kill.gap_vs_oracle", float(np.mean(rnd_eq)) - float(np.mean(orc)), "derived")
+    claim(reg, "criterion5.gap", float(np.mean(sw)) - float(np.mean(orc)), "derived")
     claim(reg, "dagger.healed_effect", float(np.mean(sw)) - float(np.mean(dg)), "derived")
     claim(reg, "dagger.unhealed_effect",
-          heals[("stagewise", 1e7)]["loss_before"] - heals[("stagewise_dagger", 1e7)]["loss_before"],
-          "derived", doc=3.3379)
+          runs[("stagewise", 1e7)][0]["loss_before"] - runs[("stagewise_dagger", 1e7)][0]["loss_before"],
+          "derived", doc=3.3378, tol=1e-3)
 
     # equal-FLOPs budget, from the same arithmetic the runs used
     per_layer = TEACHER_NONEMB / N_LAYERS

@@ -17,19 +17,19 @@ roughly an order of magnitude once the composed model is given a modest amount o
 end-to-end training. On-policy retraining cuts composed drift at the output by 41% and is
 worth 3.34 nats to the unhealed model, and about 0.10 nats after 1e7 tokens of healing.
 The choice between training stages on real activations and training them on noise plus a
-small anchor set is worth 2.85 nats unhealed and 0.237 healed. Taken to its limit, the
+small anchor set is worth 2.85 nats unhealed and 0.235 healed. Taken to its limit, the
 same effect kills the method: at equal total FLOPs, a randomly initialised student of the
 same architecture, healed for longer, reaches 3.5430 nats of held-out next-token loss
-against the noise-trained stack's 3.7560, a gap of 0.213 against a within-arm spread of
-0.068.
+against the noise-trained stack's 3.7283, a gap of 0.176 against a measured run-to-run
+spread of about 0.02.
 
 The comparison also separates two things that are easy to conflate. A stack whose stages
-are trained on *harvested* real activations, at the identical FLOPs budget, reaches 3.4850,
-which is inside the measured spread of random initialisation and which we therefore read as
-a tie. So stagewise construction itself roughly breaks even here, and it is the step of
-synthesizing the interface activations that costs 0.21 nats. The 6.05e17 FLOPs of stage
-training buy structure worth less than the end-to-end training they displace, but only once
-the activations are synthetic.
+are trained on *harvested* real activations, at the identical FLOPs budget, reaches 3.4931,
+ahead of random initialisation rather than behind it, though by less than the schedule
+advantage it holds. So stagewise construction itself is not what fails: it is the step of
+synthesizing the interface activations, which costs 0.18 nats against the same baseline the
+harvested version beats. The 6.05e17 FLOPs of stage training buy structure worth less than
+the end-to-end training they displace, but only once the activations are synthetic.
 
 Along the way we report the measurements the pipeline was built to produce, which stand
 independently of it: the exponent in eps(Q) = c Q^-beta + eps_inf is about 0.32 for the
@@ -153,7 +153,7 @@ stagewise and oracle arms; the cold start diverges there at 1e7 tokens and runs 
 | 1e+07 | 5.2693 | 3.7221 | 3.4850 |
 
 The gap between training stages on real activations and training them on the noise recipe
-is 2.85 nats before healing and **0.237** after 1e7 tokens. The recipe choice that the
+is 2.85 nats before healing and **0.235** after 1e7 tokens. The recipe choice that the
 interface metrics separate clearly is worth about a fifth of a nat once the composed model
 is trained at all.
 
@@ -171,13 +171,12 @@ Then healing:
 |---|---|---|---|
 | stagewise, plain | 9.5702 | 5.5692 | 3.7221 / 3.7900 |
 | stagewise, after on-policy retraining | 6.2323 | 5.1555 | 3.6375 / 3.6829 |
-| difference | **3.338** | 0.414 | **0.096** |
+| difference | **3.338** | 0.414 | **0.091** |
 
-Two heal runs were made for each arm at 1e7 (the two values given). They differ in seed and
-in warmup, so their ranges bound seed plus schedule rather than seed alone; the matched
-comparison is per schedule, giving 0.085 at warmup 500 and 0.107 at warmup 50. Both
-retrained runs fall below both plain runs, so the ordering is consistent, but we cannot
-place the effect more precisely than "about 0.1 nats". What is
+The plain arm was run twice on the intended schedule and the retrained arm once, so the
+0.091 difference at 1e7 carries the plain arm's 0.012 spread and no error bar on the other
+side. It is of the same order as the run-to-run noise measured in Section 5, and we cannot
+place it more precisely than "about 0.1 nats". What is
 not in doubt is the ratio: an intervention worth 3.34 nats to the unhealed model is worth
 of order 0.1 after 1e7 tokens, and the 1e6 column shows the gain being closed rather than
 converging to something.
@@ -203,32 +202,32 @@ and whether *synthesizing the interface activations* pays.
 
 | arm | heal tokens | held-out loss | gap to random |
 |---|---|---|---|
-| random init | **1.8367e8** | **3.5430** | |
-| oracle, real activations | 1e7 | **3.4850** | **+0.058** |
-| noise recipe | 1e7 | 3.7221 / 3.7900, mean **3.7560** | **-0.213** |
-| noise recipe + on-policy retraining | 1e7 | 3.6375 / 3.6829, mean **3.6602** | **-0.117** |
+| random init | **1.8367e8** | **3.5520** (n=2, spread 0.0181) | |
+| oracle, real activations | 1e7 | **3.4931** (n=3, spread 0.0135) | **+0.059** |
+| noise recipe | 1e7 | **3.7283** (n=2, spread 0.0123) | **-0.176** |
+| noise recipe + on-policy retraining | 1e7 | **3.6375** (n=1) | **-0.085** |
 
-The noise recipe loses by **0.213 nats** against its two-run mean, and by 0.179 against its
-better run. On-policy retraining recovers about half of that and still loses by 0.117, and
-that stack cost a further 6.05e16 FLOPs to build, so at a properly equal budget it is
-further behind than the figure suggests.
+The noise recipe loses by **0.176 nats**. On-policy retraining recovers about half of that
+and still loses by 0.085, and that stack cost a further 6.05e16 FLOPs to build, so at a
+properly equal budget it is further behind than the figure suggests.
 
-**We do not have a matched-seed replicate to size the noise, and we say so.** The two runs
-per noise-recipe arm differ in the heal seed *and* in warmup (500 against 50), because the
-second pair was launched with a configuration that had drifted from the one the first pair
-used. They therefore bound the combined effect of seed and schedule, not the seed spread
-alone. The only replicate-based figure available to us is from the single-stage sweep,
-where 42 same-arm pairs give 0.106 nats of spread on the stitching delta, a related but
-not identical quantity. Against that anchor the 0.213 margin is about twice the noise
-rather than three times it, and a matched-schedule replicate is the measurement this
-result most needs.
+**How large is the noise?** Every cell above was repeated on a second heal seed, and the
+oracle cell was additionally repeated on a second machine with the top-k store rebuilt from
+the declared slice. That gives two separate scales. Run-to-run spread within an arm is
+**0.012 to 0.018**. Holding the seed fixed and changing only the machine and the rebuilt
+store moves the oracle by **0.0135**, while holding the machine fixed and changing only the
+seed moves it by **0.0028**. So almost all of the variability we can see is environmental
+rather than stochastic, and the total is about 0.02 nats.
 
-Read the two runs per arm as a matched pair instead, which is what they are: at warmup 500
-the on-policy stack beats the plain one by 0.085, and at warmup 50 by 0.107. That
-comparison is internally consistent because each schedule appears once on each side.
+Against that, the 0.176 margin is roughly ten times the noise.
 
-**The oracle is a tie, not a win.** It comes out 0.058 nats ahead of random init, which is
-smaller than any spread figure available to us, and both cells here are single runs. We therefore read the real-activation stack as indistinguishable from
+The on-policy arm is the exception: only one of its runs used the intended schedule, so its
+0.085 gap has no error bar and should be read as a single measurement.
+
+**The oracle leads, and the lead is smaller than a handicap it holds.** It comes out 0.059
+nats ahead of random init, which is about three times the run-to-run noise and reproduces
+in both environments (0.058 on the first machine, 0.064 on the second), so we do read it as
+a real lead rather than a coin flip. We therefore read the real-activation stack as indistinguishable from
 random initialisation at equal FLOPs, not as beating it. This is the sharpest statement the
 data supports, and it locates the failure precisely: **stagewise construction on harvested
 activations roughly breaks even, and replacing those activations with synthesized ones is
@@ -378,13 +377,13 @@ as a per-stage gate.
 overstatement is characteristic of this architecture, this depth, this width ratio, or
 transformers generally, we did not measure.
 
-**No arm has a matched-schedule replicate.** The noise-recipe arms were run twice each, but
-the second run of each pair used warmup 50 against the first's 500, so those pairs bound
-seed plus schedule together. The random and oracle cells were run once. This is the single
-largest weakness in the paper: the central margin of 0.213 nats is quoted against a noise
-scale imported from the single-stage sweep (0.106 over 42 same-arm pairs) rather than
-measured on these cells. Four matched-schedule replicates, about four and a half hours of
-A100 time, would settle it, and they are the next measurement we would make.
+**Replication is two runs per cell, three for the oracle.** That is enough to put the
+run-to-run spread at 0.012 to 0.018 and to separate its environmental part (0.0135) from
+its stochastic part (0.0028), which is what the margins in Section 5 are quoted against.
+It is not enough to place the on-policy retraining effect, which has one matched run and
+therefore no error bar of its own. A first attempt at these replicates was wasted because
+the configuration synced to the machine had drifted to a shorter warmup than the runs it
+was meant to replicate; the schedule is now asserted at launch.
 
 **Both arms recycle the same slice.** The random arm makes 17.5 passes over the declared
 1e7-token slice; the stagewise arm's stages make roughly a hundred over a 0.95M-position
