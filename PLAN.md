@@ -112,6 +112,25 @@ than compounds** (every stage after the first contracts what it inherits), and e
 interface-level metric so far overstates by roughly 10x what survives a modest heal.
 Phase 3's margins have to be stated on healed end-to-end loss, not on eps.
 
+### Phase 2b: the data-limited protocol → `docs/08-data-limited-protocol.md`
+
+Opened 21 Sep 2026. G2 judged the method at equal total FLOPs, which is the source
+document's kill line, and it lost. Andres's position after reading the result is that
+FLOPs was never the point: the budget that matters is distinct real tokens, noise queries
+are to be reported and not charged, and the method succeeds if it produces a better model
+than the same data allows without it. G2's record is not edited. Phase 2b is a new
+question with its own pre-registration, made after G2's result was known and said so.
+
+Every arm draws statistics, anchors, heal tokens and its validation split from the same D
+real tokens; compute is capped generously and reported; every arm is trained to its
+validation-selected best. Treatments: the noise dose m in {2, 8, 32} and the sketched-CF
+term (lambda in {3, 30}). Controls: the same pipeline with neither, and plain KD on D.
+
+**Gate S1** (single stage): a treatment chosen on validation beats the control chosen on
+validation, on held-out stitching delta, by more than twice the pooled seed sd.
+**Gate S2** (composed and healed): beats both controls by at least 0.10 nats, 3 seeds, one
+machine. Budget about $50. The paper is held until S2 is read.
+
 ### Phase 3: Tier 0 full pipeline (NOT RUN, G2 fired)
 
 Kept below as written, because the gate's meaning depends on what it was gating.
