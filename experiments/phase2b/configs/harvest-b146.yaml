@@ -1,0 +1,21 @@
+# docs/08 step 1: a budgeted harvest of the first 146 rows of the declared slice
+# (299008 tokens). Statistics at every interface, anchors and validation activations
+# at the input of stage 2 only, no top-k store (step 1 heals nothing).
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+mode: resident
+attn: sdpa
+dtype: float16
+device: cuda
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+batch: 8
+seq_len: 2048
+anchor_seqs: 8
+ref_ifaces: [2]
+skip_topk: true
+topk: 64
+seed: 0
+budget_rows: 146
+val_frac: 0.1
+out: out/phase2b/harvest-b146

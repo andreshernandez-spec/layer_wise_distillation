@@ -105,6 +105,21 @@ def scarce(reg):
             claim(reg, f"long.{arm}.q3e8.s{seed}.stitch", r["stitch"]["delta"], "3e8 cell")
 
 
+def cf_probe(reg):
+    """docs/08 quotes these to justify the CF arm and its lambda grid."""
+    f = Path("out/phase2b/cf_probe.json")
+    if not f.exists():
+        return
+    d = json.load(open(f))
+    for label, key in (("R", "R (anchors only) | real"), ("C_mix", "C_mix (noise recipe) | real")):
+        r = d[key]
+        claim(reg, f"cfprobe.{label}.dispersion", r["var_ratio_student_over_teacher"], str(f),
+              doc={"R": 0.65, "C_mix": 0.51}[label], tol=0.01)
+        claim(reg, f"cfprobe.{label}.cf", r["cf"], str(f))
+        claim(reg, f"cfprobe.{label}.rel_mse", r["rel_mse"], str(f))
+        claim(reg, f"cfprobe.{label}.lambda_at_parity", r["rel_mse"] / r["cf"], str(f))
+
+
 def phase2(reg):
     # Both pods. A cell is identified by arm and budget; several runs of the same cell
     # differ only in heal seed and in which machine they ran on.
@@ -235,6 +250,7 @@ def main(a):
     reg = {}
     phase1(reg)
     scarce(reg)
+    cf_probe(reg)
     phase2(reg)
     bad = [k for k, v in reg.items() if v["matches_doc"] is False]
     if a.json:

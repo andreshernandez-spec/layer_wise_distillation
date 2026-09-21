@@ -1,8 +1,12 @@
-# 08: The data-limited protocol (DRAFT, not yet a pre-registration)
+# 08: The data-limited protocol
 
-**Status: draft for Andres, 21 Sep 2026.** It becomes a pre-registration when the open
-decisions in the last section are settled and the commit SHA is recorded here. Nothing
-below has been run.
+**Status: pre-registered 21 Sep 2026.** Andres settled the four open decisions the same
+day (last section). The commit that adds this sentence is the timestamp; step 1's
+constants are asserted at launch by `experiments/pod/phase2b_step1.sh`, so a config that
+drifts from this page stops the run instead of changing the experiment. No cell of this
+protocol had been run when this was committed. Two probes were run first, both on Phase 2
+artifacts and neither training anything, and both are reported below because they shaped
+the design: `cf_probe.py` and a read of the harvested CF sketch.
 
 ## Why this exists
 
@@ -119,76 +123,129 @@ about 1000 at the scarce one. Nothing is known yet about small multipliers.
 **Noise is a dose.** The treatment is the noise ratio m, noise positions per real position
 in the training stream, and m = 0 is the control. Everything else is identical across
 doses: same D, same contract, same selection rule, same cap. That isolates noise from the
-stagewise pipeline, which the old C-versus-R comparison did only at m = 10.
+stagewise pipeline, which the old C-versus-R comparison did only at m = 10. `DoseMix`
+carries the fractional real count from batch to batch, so the ratio is exact over a cycle
+and m = 32 is expressible at a batch of 8.
+
+**The CF term is the second treatment** (decision 2). It is the source document's "soft
+shape" penalty: 64 fixed unit directions, frequencies {0.5, 1, 1.5, 2}, squared difference
+of the two empirical characteristic functions. Two things about it were settled by
+measurement before this page was committed.
+
+- *It is a two-sample statistic in whitened coordinates*, student output against teacher
+  output on the same batch, so its optimum is the mimic optimum on real and on noise inputs
+  alike, which is the condition the source document puts on any regularizer used as a
+  loss. It is **not** the sketch the harvest accumulates. That one is in raw coordinates,
+  and read back it is unusable as a uniform target: at interface 0 every |cf| is 1.000,
+  at interface 6 it is 0.06 by t = 1, and only mid-depth interfaces happen to have unit
+  scale.
+- *There is something for it to act on.* `experiments/phase2b/cf_probe.py`, on the Phase 2
+  stage-2 students and real held-out activations: the variance of the student's output
+  along random whitened directions is **0.65** of the teacher's for the anchors-only
+  student and **0.51** for the noise recipe. That is the conditional-mean shrinkage an MSE
+  objective produces, and it means the next stage reads activations with half the spread
+  it was trained on. The CF distance there is 0.017 to 0.037 against a relative MSE of 0.43
+  to 0.48, so lambda = 3 puts the term at about a tenth of the MSE and lambda = 30 at about
+  parity. Those two values are the grid.
+
+The CF term cannot add information. It can only trade a little MSE for a correct marginal,
+and whether the next stage prefers that is the empirical question.
 
 | arm | what it is | answers |
 |---|---|---|
-| B0 | plain KD from random init on D, multi-epoch, validation-stopped, lr grid | is the pipeline worth having at all |
-| B1 | stagewise with m = 0 (anchors only), each stage validation-stopped | the literal "without it" |
-| M(m) | stagewise with m in {2, 8, 32}, same rule | the claim, and how much noise it takes |
-| M+ | M at the best m, with on-policy retraining (step 3 only) | does DAgger survive a D-limited heal |
-| ref | KD on D plus teacher-generated text (step 3 only, reference, not a gate) | the other way to turn teacher compute into data |
+| B0 | plain KD from random init on D, multi-epoch, validation-selected, lr grid | is the pipeline worth having at all |
+| control | stagewise, m = 0, lambda = 0, weight decay in {0.1, 1.0} | the literal "without it", not left as a strawman |
+| M(m) | stagewise, m in {2, 8, 32} | the claim, and how much noise it takes |
+| CF | lambda in {3, 30}, at m = 0 and at m = 8 | regularization alone, and with noise |
+| M+ | the chosen treatment with on-policy retraining (step 3) | does DAgger survive a D-limited heal |
+| ref | KD on D plus teacher-generated text (step 3, reference, not a gate) | the other way to turn teacher compute into data |
 
-Stages are selected on **validation stitching delta**, not eps: Phase 1 showed eps improve
-while stitching degrades, so eps cannot pick the checkpoint.
+**Selection, the same for every arm.** A cosine sized in advance cannot be used: a
+checkpoint lifted from the middle of a long cosine run is at near-peak learning rate, and
+the arm that peaks early (the control, at scarce data) would be read at its worst. So:
+warm up 100 steps to 3e-4, hold the rate, validate every 100 steps, stop after 10
+validations without a new best or at the cap of 6104 steps (1e8 positions, the source
+document's per-stage budget), then cool the best checkpoint linearly to zero over a tenth
+of its step count (at least 50 steps) and keep whichever of the two validates better.
+Stages validate on **stitching delta** over the budget's validation rows (at most 32 of
+them), not eps: Phase 1 showed eps improve while stitching degrades. Heals validate on
+next-token loss over the same rows.
 
-**Budgets.** D in {1e5, 3e5, 1e6} tokens as nested row prefixes of the declared slice
-(49, 146, 488 rows; sha256 per subset recorded), plus the already-measured 1e7 as the
-data-rich end. Statistics are re-harvested per D; at 1e5 that is about 90k training
-positions for a 2048-dimensional covariance, which is what the shrinkage estimator is for,
-and whatever it costs the noise arm is part of the method's honest price.
+**Choosing among configurations is also selection.** There are seven treatment
+configurations against two controls. The best of each side is chosen on validation, and
+only then is its held-out number read; choosing on the held-out score would hand the
+treatment the best of seven draws.
+
+**Budgets.** D = 49 and 488 rows of the declared slice (100,352 and 999,424 tokens), as
+nested prefixes, sha256 per subset in the harvest record; 146 rows (299,008 tokens) only
+if the sign changes between them. The last 10% of rows (at least 4) are validation and
+everything else, statistics included, comes from the rest. At 49 rows that is 90,112
+training positions for a 2048-dimensional covariance, which is what the shrinkage
+estimator is for, and whatever that costs the noise arm is part of the method's price. The
+already-measured D = 1e7 is the data-rich end.
 
 **Three steps, each gated, cheapest first.**
 
-*Step 1: single-stage dose-response with a fair baseline* (stage 2, the Phase 1
-substrate). D in {1e5, 3e5, 1e6} x m in {0, 2, 8, 32} x 3 seeds = 36 cells, validation
-patience, cap 1e8 positions. About 5 A100-hours with four jobs sharing the card, **~$8**.
-Gate S1: some m > 0 beats m = 0 on held-out stitching delta by more than twice the pooled
-seed spread at some D. If not, the Phase 1 effect was early stopping in disguise; write
-that up and stop.
+*Step 1: single-stage dose-response with a fair baseline*, stage 2 (blocks 8 to 11, the
+Phase 1 substrate). Nine configurations x two budgets x two seeds = 36 cells, then a third
+seed on the chosen control and the chosen treatment at each budget. Three cells share one
+A100. About 10 hours, **~$16**.
 
-*Step 2: composed, the decisive test*, at each D that passed S1. Full six-stage stacks for
-m = 0 and the best m; compose; heal on D with validation stopping and an lr grid
-{3e-5, 1e-4, 3e-4}; B0 on the same D with the same grid and rule; 3 heal seeds per arm;
-every arm of one D on one machine, because the replication pass put machine-to-machine
-error at 0.0135 against 0.0028 seed-to-seed. About 3 A100-hours per D, **~$5 per D**.
+Gate S1, per budget: the chosen treatment's held-out stitching delta is below the chosen
+control's by more than twice the pooled seed standard deviation, and no treatment seed is
+above any control seed. If it passes at no budget, the Phase 1 effect was early stopping in
+disguise; write that up and stop.
 
-*Step 3: the ends and the references.* Multi-epoch validation-stopped heals for M and B1
-at D = 1e7 on the existing stacks (~$6); on-policy retraining and the self-generated-text
-reference at the winning D (~$8).
+*Step 2: composed, the decisive test*, at each budget that passed S1. Six-stage stacks for
+the control and the chosen treatment, every stage selected as above; compose; heal on D
+with the same selection rule and an lr grid {3e-5, 1e-4, 3e-4}; B0 on the same D, same
+grid, same rule; 3 heal seeds per arm; every arm of one budget on one machine, because the
+replication pass put machine-to-machine error at 0.0135 against 0.0028 seed-to-seed. About
+**$10 per budget**.
 
-All of it is about **$35**; the first gate can stop it at $8.
+*Step 3: the ends and the references.* Validation-selected multi-epoch heals for M and the
+real-activation stack at D = 1e7 on the existing checkpoints (~$6); on-policy retraining
+and the self-generated-text reference at the winning budget (~$8).
 
-**Success (S2).** At some D, M(m) beats **both** B0 and B1 on held-out loss by at least
-0.10 nats, means over 3 seeds, no overlap between the arms' ranges, same machine. 0.10 is
-five times the measured run-to-run noise of 0.02.
+About **$50** if every step runs; the first gate can stop it at $16.
 
-**Kill.** M loses to B1 at every D: noise buys nothing at the model level even when data
-is the binding constraint, and the Phase 1 effect does not survive composition. M beats B1
-but loses to B0 at every D: noise helps a pipeline that is itself not worth running.
+**Success (S2).** At some budget the chosen treatment beats **both** B0 and the control on
+held-out next-token loss by at least 0.10 nats, means over 3 seeds, no overlap between the
+arms' ranges, same machine. 0.10 is five times the measured run-to-run noise of 0.02.
 
-**Reported whatever happens**, generated not typed: per arm and D, the noise positions,
-teacher queries, total FLOPs, FLOPs as a multiple of what B0 actually spent, the step at
-which validation picked the checkpoint, and held-out loss; and the dose-response figure,
-held-out loss against m at each D. That table is the answer to "2x or 8x".
+**Kill.** The treatment loses to the control at every budget: neither noise nor the CF
+term buys anything at the model level even when data is the binding constraint. It beats
+the control but loses to B0 at every budget: they help a pipeline that is itself not worth
+running.
 
-## Code it needs
+**Reported whatever happens**, generated not typed: per arm and budget, the noise
+positions per distinct real token, the number of passes over the real data, total FLOPs and
+their multiple of what the control spent, the step validation chose, whether the run
+stopped on patience or hit the cap, the student's output dispersion relative to the
+teacher's, and the held-out number. That table is the answer to "2x or 8x".
 
-Small, and all of it testable on CPU before any rental.
+## The code, all of it tested on CPU before any rental
 
-- **A data budget in the harvest**: restrict statistics, anchors, top-k store and the
-  validation split to the first N rows of the declared slice; write the subset's sha.
-- **Noise ratio as a parameter**: `AnchorMix` takes m, including 0 and ratios above 7
-  (batch 8 cannot hold 1:32, so interleave noise-only batches); record the ratio achieved.
-- **Validation in the stage trainer**: periodic stitching delta on the validation rows,
-  keep-best state, patience, trajectory in the record.
-- **Validation in the heal**: `heal.py` passes `eval_fn=None` today, so no heal has a
-  held-out trajectory and nobody knows whether 17.5 epochs was the random arm's optimum.
-  Add the validation eval, keep-best, and the lr grid.
-- **Accounting in every record**: FLOPs, teacher queries, noise and real positions, so the
-  multiplier table comes from `claims.py`.
-- The guards from `docs/07` carry over unchanged: schedule asserted at launch, results
-  never overwritten, checkpoints hashed, logs rotated, delivered tokens checked.
+- `lwd.harvest.budget` and `budget_rows` in the harvest: statistics, anchors and the top-k
+  store from the training rows of the budget, validation activations written after the
+  statistics are closed. Tested end to end on pythia-70m.
+- `lwd.noise.samplers.DoseMix`: exact ratio, m = 0 without a noise sampler, m above the
+  batch size.
+- `lwd.stage.cf.CFDistance`: zero at the mimic optimum, monotone in under-dispersion, its
+  gradient pushes a shrunk student back out, blind to a permutation of positions (which is
+  why it is only ever added to the MSE).
+- `lwd.stage.select` and `lwd.heal.select`: hold, validate, stop on patience, cool the
+  best checkpoint, keep the better; the restored weights are exactly the validated ones.
+- `experiments/phase2b/cell.py`: one cell, accounts for every position, refuses to
+  overwrite a result, asserts the statistics came from the training rows alone.
+- `experiments/phase2b/gate.py`: gate S1, configurations chosen on validation.
+- `experiments/pod/phase2b_step1.sh`: resumable queue, schedule asserted at launch, logs
+  rotated. The guards from `docs/07` carry over unchanged.
+
+The chain was run end to end twice before this page was committed, neither run being a
+cell of the protocol: on pythia-70m (harvest, a control cell, a dosed CF cell, the gate),
+and for 35 steps on the real 1.4B on the laptop to exercise fp16 stitching and the
+contract at d = 2048 from a 90k-token budget.
 
 ## What happens to the paper
 
@@ -199,19 +256,12 @@ at equal compute, wins at equal data below X tokens, and interface metrics overs
 either way", which is a better paper. If S2 fails, the negative is complete instead of
 partial. Either way it should not go out before step 2.
 
-## Open decisions (Andres)
+## Decisions, settled by Andres on 21 Sep 2026
 
-1. **What "without it" must mean for success.** Recommended: beat both B1 (same pipeline,
-   no noise) and B0 (no pipeline). Beating only B1 shows noise helps a pipeline; it does
-   not show the result is useful.
-2. **Which regularizations.** As run so far, "these regularizations" are the noise mix,
-   the whitening contract and weight decay. The sketched-CF distribution term and any alpha
-   penalty from the source document were only ever diagnostics; no training loss uses
-   them. Recommended: noise only through S1, and add a CF-regularized arm in step 2 only if
-   S1 passes, since it is a new capability and not a config change.
-3. **The margin**, 0.10 nats, and the budget, about $35 with an $8 first gate.
-4. **Whether the student should start pretrained.** "Finetuning" suggests it might. Every
-   arm here starts from random weights because the six-by-two-block student has no
-   pretrained version. A pretrained small model tuned on D is a fair outside reference and
-   a different architecture. Recommended: leave it out of this round and name it as a
-   limitation.
+1. **"Without it" means both.** Success requires beating the same pipeline without the
+   treatment and plain KD on the same data.
+2. **The CF-regularized arm is in.** Defined above; screened in step 1 alongside the noise
+   doses and carried into step 2 if validation chooses it.
+3. **Margin 0.10 nats; budget about $50.**
+4. **No pretrained start.** Every arm starts from random weights. "Finetuning" in the
+   original statement was loose wording for a data-limited setting, not a requirement.

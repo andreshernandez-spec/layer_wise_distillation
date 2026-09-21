@@ -1,0 +1,18 @@
+# docs/08 step 1: single-stage dose-response on stage 2 (blocks 8-11), budget of 488 rows.
+# Every constant here is pre-registered in docs/08; phase2b_step1.sh asserts them.
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+stage: 2
+harvest: out/phase2b/harvest-b488
+heldout: out/heldout/heldout_rows.npy
+heldout_seqs: 64
+val_seqs_max: 32
+student_layers: 2
+student_heads: 16
+device: cuda
+dtype: float16
+cf: {M: 64, freqs: [0.5, 1.0, 1.5, 2.0], seed: 0}
+train: {cap_steps: 6104, batch: 8, seq_len: 2048, lr: 3.0e-4, warmup: 100, weight_decay: 0.1,
+        grad_clip: 1.0, val_every: 100, patience: 10, cooldown_frac: 0.1, min_cooldown: 50,
+        log_every: 50, amp: true}
+out: out/phase2b/cells

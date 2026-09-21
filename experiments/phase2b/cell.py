@@ -66,7 +66,10 @@ def main(a):
     val_X = load_refs(harvest / "anchors_val" / f"iface{k}")
     assert anchors.shape[0] == budget["train_rows"] and val_X.shape[0] == budget["val_rows"]
     L = c["train"]["seq_len"]
-    val_ids = torch.from_numpy(np.load(harvest / "val_rows.npy")[:, : L + 1].astype(np.int64))
+    # validation reads at most val_seqs_max rows: 32 x 2048 tokens is ample for a paired
+    # comparison of checkpoints and keeps a validation under a tenth of the step time
+    n_val = min(budget["val_rows"], c.get("val_seqs_max", budget["val_rows"]))
+    val_ids = torch.from_numpy(np.load(harvest / "val_rows.npy")[:n_val, : L + 1].astype(np.int64))
     held_ids = torch.from_numpy(np.load(c["heldout"])[: c["heldout_seqs"], : L + 1].astype(np.int64))
 
     noise = ContractGaussianized(phi_in, "iid", None) if a.m > 0 else None
