@@ -13,5 +13,5 @@ student_heads: 16
 device: cuda
 dtype: float16
 heal: {cap_tokens: 200000000, batch: 1, seq_len: 2048, warmup: 500, weight_decay: 0.1, grad_clip: 1.0,
-       w_kd: 0.9, val_every: 100, patience: 10, cooldown_frac: 0.1, min_cooldown: 50, log_every: 100, amp: true}
+       w_kd: 0.9, val_every: 200, patience: 5, cooldown_frac: 0.1, min_cooldown: 50, log_every: 100, amp: true}
 out: out/phase2b/heals

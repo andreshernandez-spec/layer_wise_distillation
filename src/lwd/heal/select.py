@@ -1,11 +1,17 @@
-"""Heal a composed student to its validation-selected best (docs/08).
+"""Heal a composed student to its validation-selected length (docs/08).
 
-Same rule as lwd.stage.select, for the same reason: under a data budget every arm recycles
-its tokens for as many epochs as help, and how many that is differs by arm, so the length
-cannot be fixed in advance and a cosine cannot be sized. Warm up, hold the rate, validate
-on the budget's validation rows, stop on patience, cool the best checkpoint to zero, keep
-the better of the two. Until this existed no heal had a validation trajectory at all, and
-nobody knew whether 17.5 epochs was the random arm's optimum or merely its budget.
+Same rule as the stage trainer and the same code: lwd.stage.select.select_length. Under a
+data budget every arm recycles its tokens for as many epochs as help, and how many that is
+differs by arm, so the length cannot be fixed in advance and a cosine cannot be sized.
+Until this existed no heal had a validation trajectory at all, and nobody knew whether
+17.5 epochs was the random arm's optimum or merely its budget.
+
+A snapshot here is 600M trainable weights and their Adam moments. The weights are kept
+exactly; the moments are kept in bfloat16, which is three significant digits on the fp32
+exponent range and costs a cooldown nothing, and brings a snapshot from 7.2 GB to 4.8 GB.
+The window of snapshots a rewind can need is what bounds host memory, which is why the
+heal validates every 200 steps with a patience of 5 where a stage uses 100 and 10: the same
+1000 steps of patience, half the snapshots.
 """
 from __future__ import annotations
 
@@ -15,7 +21,7 @@ from dataclasses import dataclass
 import torch
 
 from lwd.heal.train import TopKStore, kd_and_ce
-from lwd.stage.select import to_cpu
+from lwd.stage.select import select_length
 
 
 @dataclass
@@ -28,8 +34,8 @@ class HealSelectConfig:
     weight_decay: float = 0.1
     grad_clip: float = 1.0
     w_kd: float = 0.9
-    val_every: int = 100
-    patience: int = 8
+    val_every: int = 200
+    patience: int = 5
     cooldown_frac: float = 0.1
     min_cooldown: int = 50
     log_every: int = 25
@@ -38,9 +44,31 @@ class HealSelectConfig:
     abort_after_skips: int = 50
 
 
+def _pack(obj):
+    """Host copy of an optimizer state: moments in bfloat16, everything else as it is."""
+    if torch.is_tensor(obj):
+        t = obj.detach().to("cpu", copy=True)
+        return t.to(torch.bfloat16) if t.is_floating_point() and t.numel() > 1 else t
+    if isinstance(obj, dict):
+        return {k: _pack(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(_pack(v) for v in obj)
+    return obj
+
+
+def _unpack(obj):
+    if torch.is_tensor(obj):
+        return obj.to(torch.float32) if obj.dtype == torch.bfloat16 else obj
+    if isinstance(obj, dict):
+        return {k: _unpack(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(_unpack(v) for v in obj)
+    return obj
+
+
 def heal_selected(model, store: TopKStore, cfg: HealSelectConfig, val_fn, device="cpu", log=print):
     """val_fn(model) -> float on the budget's validation rows, lower is better. Leaves
-    `model` holding the selected weights; returns (history, summary)."""
+    `model` holding the annealed weights of the chosen length; returns (history, summary)."""
     torch.manual_seed(cfg.seed)
     model.to(device).train()
     named = [(n, p) for n, p in model.named_parameters() if p.requires_grad]
@@ -48,21 +76,20 @@ def heal_selected(model, store: TopKStore, cfg: HealSelectConfig, val_fn, device
     opt = torch.optim.AdamW([{"params": [p for p in params if p.dim() >= 2], "weight_decay": cfg.weight_decay},
                              {"params": [p for p in params if p.dim() < 2], "weight_decay": 0.0}],
                             lr=cfg.lr, betas=(0.9, 0.95))
-    seq = cfg.seq_len
-    cap_steps = max(1, cfg.cap_tokens // (cfg.batch * seq))
+    cap_steps = max(1, cfg.cap_tokens // (cfg.batch * cfg.seq_len))
     # one stream for both phases; the store re-permutes and loops, so it never runs dry
-    stream = iter(store.batches(cfg.batch, 4 * cfg.cap_tokens + 10 * seq * cfg.batch, cfg.seed))
-    hist, t0 = [], time.time()
-    c = {"tokens": 0, "skipped": 0, "consec": 0, "validations": 0}
+    stream = iter(store.batches(cfg.batch, 4 * cfg.cap_tokens + 10 * cfg.seq_len * cfg.batch, cfg.seed))
+    t0 = time.time()
+    c = {"tokens": 0, "skipped": 0, "consec": 0}
 
     def snapshot():
-        return to_cpu({n: p for n, p in named}), to_cpu(opt.state_dict())
+        return ({n: p.detach().to("cpu", copy=True) for n, p in named}, _pack(opt.state_dict()))
 
     def restore(snap):
         with torch.no_grad():
             for n, p in named:
                 p.copy_(snap[0][n].to(p.device))
-        opt.load_state_dict(snap[1])
+        opt.load_state_dict(_unpack(snap[1]))
 
     def one_step(step, lr, phase):
         for grp in opt.param_groups:
@@ -88,52 +115,21 @@ def heal_selected(model, store: TopKStore, cfg: HealSelectConfig, val_fn, device
                 "tokens": c["tokens"], "sec": time.time() - t0, "skipped": c["skipped"]}
 
     def validate():
-        c["validations"] += 1
         model.eval()
         with torch.no_grad():
             v = float(val_fn(model))
         model.train()
         return v
 
-    best, best_step, snap, bad, stop, step = float("inf"), -1, None, 0, "cap", 0
-    while step < cap_steps:
-        rec = one_step(step, cfg.lr * min(1.0, (step + 1) / cfg.warmup), "stable")
-        step += 1
-        if step % cfg.val_every == 0 or step == cap_steps:
-            rec["val"] = validate()
-            if rec["val"] < best:
-                best, best_step, bad, snap = rec["val"], step, 0, snapshot()
-            else:
-                bad += 1
-        hist.append(rec)
-        if (step - 1) % cfg.log_every == 0 or "val" in rec:
-            log({k: (float(f"{v:.4g}") if isinstance(v, float) else v) for k, v in rec.items()})
-        if bad >= cfg.patience:
-            stop = "patience"
-            break
-    assert snap is not None, "no validation ran: the cap is below val_every"
-    stable_steps = step
-
-    restore(snap)
-    n_cool = max(cfg.min_cooldown, int(round(cfg.cooldown_frac * best_step)))
-    for i in range(n_cool):
-        hist.append(one_step(stable_steps + i, cfg.lr * (1.0 - (i + 1) / n_cool), "cooldown"))
-    cooled = validate()
-    hist[-1]["val"] = cooled
-    selected = "cooled"
-    if cooled > best:
-        with torch.no_grad():
-            for n, p in named:
-                p.copy_(snap[0][n].to(p.device))
-        selected = "stable-best"
+    hist, info = select_length(one_step, validate, snapshot, restore, cap_steps=cap_steps, lr=cfg.lr,
+                               warmup=cfg.warmup, val_every=cfg.val_every, patience=cfg.patience,
+                               cooldown_frac=cfg.cooldown_frac, min_cooldown=cfg.min_cooldown,
+                               log=log, log_every=cfg.log_every)
     model.eval()
     epoch = max(1, store.epoch_tokens())
-    summary = {"stop": stop, "best_step": best_step, "best_val": best, "cooled_val": cooled,
-               "selected": selected, "selected_val": min(best, cooled),
-               "stable_steps": stable_steps, "cooldown_steps": n_cool,
-               "tokens_seen": c["tokens"], "epochs": c["tokens"] / epoch,
-               "tokens_to_best": hist[best_step - 1]["tokens"],
-               "epochs_to_best": hist[best_step - 1]["tokens"] / epoch,
-               "validations": c["validations"], "skipped": c["skipped"], "seconds": time.time() - t0}
-    log({k: v for k, v in summary.items()})
+    per_step = cfg.batch * cfg.seq_len
+    summary = {**info, "tokens_seen": c["tokens"], "epochs": c["tokens"] / epoch,
+               "tokens_to_best": info["best_step"] * per_step,
+               "epochs_to_best": info["best_step"] * per_step / epoch,
+               "skipped": c["skipped"], "seconds": time.time() - t0}
     return hist, summary

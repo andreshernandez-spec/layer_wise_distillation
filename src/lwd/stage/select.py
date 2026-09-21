@@ -73,6 +73,70 @@ def _restore(student, opt, snap, device):
     opt.load_state_dict(snap[1])
 
 
+def select_length(one_step, validate, snapshot, restore, *, cap_steps, lr, warmup, val_every,
+                  patience, cooldown_frac, min_cooldown, log=print, log_every=20):
+    """The rule itself, shared by the stage trainer and the heal so there is one copy.
+
+    one_step(step, lr, phase) -> record dict; validate() -> float, lower is better;
+    snapshot() -> opaque state; restore(state). Returns (history, info)."""
+    def n_cool(length):
+        grid = val_every
+        return max(grid, int(round(cooldown_frac * length / grid)) * grid, -(-min_cooldown // grid) * grid)
+
+    def smoothed(vals, i):
+        """Centred three-point mean; two points at either end. One validation of a few
+        sequences at a held learning rate moves by a nat between neighbours."""
+        lo, hi = max(0, i - 1), min(len(vals) - 1, i + 1)
+        return sum(vals[lo:hi + 1]) / (hi - lo + 1)
+
+    hist = []
+    snaps = {0: snapshot()}                           # step -> state; a rewind can reach step 0
+    vsteps, vals = [], []
+    best_i, stop, step, n_val = None, "cap", 0, 0
+    while step < cap_steps:
+        rec = one_step(step, lr * min(1.0, (step + 1) / warmup), "stable")
+        step += 1
+        at_cap = step == cap_steps
+        if step % val_every == 0 or at_cap:
+            rec["val"] = validate(); n_val += 1
+            vsteps.append(step); vals.append(rec["val"])
+            snaps[step] = snapshot()
+            # a smoothed value is final once its right-hand neighbour exists
+            final = len(vals) if at_cap else len(vals) - 1
+            if final > 0:
+                best_i = min(range(final), key=lambda i: smoothed(vals, i))
+                need = vsteps[best_i] - n_cool(vsteps[best_i])      # where its rewind starts;
+                for k in [k for k in snaps if k < need]:            # later bests rewind from
+                    del snaps[k]                                    # later still, so prune
+                if final - 1 - best_i >= patience:
+                    stop = "patience"
+        hist.append(rec)
+        if (step - 1) % log_every == 0 or "val" in rec:
+            log({k: (round(v, 5) if isinstance(v, float) and k != "lr" else v) for k, v in rec.items()})
+        if stop == "patience":
+            break
+    assert best_i is not None, "fewer than two validations ran: the cap is below 2 x val_every"
+    stable_steps, length = step, vsteps[best_i]
+    start = max(k for k in snaps if k <= length - min(n_cool(length), length))
+    cool = length - start
+
+    # Rewind and anneal so that the run ends at the chosen length. The data stream simply
+    # continues; only the weights and the optimizer go back.
+    restore(snaps[start])
+    del snaps
+    for i in range(cool):
+        s_abs = start + i
+        hist.append(one_step(s_abs, lr * min(1.0, (s_abs + 1) / warmup) * (1.0 - (i + 1) / cool), "cooldown"))
+    cooled = validate(); n_val += 1
+    hist[-1]["val"] = cooled
+    info = {"stop": stop, "best_step": length, "rewound_to": start, "cooldown_steps": cool,
+            "smoothed_best_val": smoothed(vals, best_i), "raw_val_at_best_step": vals[best_i],
+            "cooled_val": cooled, "selected": "annealed", "selected_val": cooled,
+            "stable_steps": stable_steps, "stable_vals": list(zip(vsteps, vals)), "validations": n_val}
+    log({k: (round(v, 5) if isinstance(v, float) else v) for k, v in info.items() if k != "stable_vals"})
+    return hist, info
+
+
 def train_selected(student, teacher, sampler, cfg: SelectConfig, val_fn, phi_in=None,
                    phi_out=None, cf=None, device="cpu", log=print):
     """val_fn(student) -> float, lower is better, deterministic. Leaves `student` holding
@@ -87,8 +151,8 @@ def train_selected(student, teacher, sampler, cfg: SelectConfig, val_fn, phi_in=
     opt = torch.optim.AdamW([{"params": decay, "weight_decay": cfg.weight_decay},
                              {"params": no_decay, "weight_decay": 0.0}], lr=cfg.lr, betas=(0.9, 0.95))
     use_amp = cfg.amp and device != "cpu"
-    hist, t0 = [], time.time()
-    count = {"real": 0, "noise": 0, "skipped": 0, "validations": 0}
+    t0 = time.time()
+    count = {"real": 0, "noise": 0, "skipped": 0}
 
     def set_lr(v):
         for grp in opt.param_groups:
@@ -126,77 +190,21 @@ def train_selected(student, teacher, sampler, cfg: SelectConfig, val_fn, phi_in=
         return rec
 
     def validate():
-        count["validations"] += 1
         student.eval()
         with torch.no_grad():
             v = float(val_fn(student))
         student.train()
         return v
 
-    def n_cool(length):
-        grid = cfg.val_every
-        return max(grid, int(round(cfg.cooldown_frac * length / grid)) * grid, 
-                   -(-cfg.min_cooldown // grid) * grid)
-
-    def smoothed(vals, i):
-        """Centred three-point mean; two points at either end. One validation of five
-        sequences at a held learning rate moves by a nat between neighbours."""
-        lo, hi = max(0, i - 1), min(len(vals) - 1, i + 1)
-        return sum(vals[lo:hi + 1]) / (hi - lo + 1)
-
-    snaps = {0: _snapshot(student, opt)}             # step -> state; a rewind can reach step 0
-    vsteps, vals = [], []
-    best_i, stop, step = None, "cap", 0
-    while step < cfg.cap_steps:
-        rec = one_step(step, cfg.lr * min(1.0, (step + 1) / cfg.warmup), "stable")
-        step += 1
-        at_cap = step == cfg.cap_steps
-        if step % cfg.val_every == 0 or at_cap:
-            rec["val"] = validate()
-            vsteps.append(step); vals.append(rec["val"])
-            snaps[step] = _snapshot(student, opt)
-            # a smoothed value is final once its right-hand neighbour exists
-            final = len(vals) if at_cap else len(vals) - 1
-            if final > 0:
-                best_i = min(range(final), key=lambda i: smoothed(vals, i))
-                need = vsteps[best_i] - n_cool(vsteps[best_i])      # where its rewind starts;
-                for k in [k for k in snaps if k < need]:            # later bests rewind from
-                    del snaps[k]                                    # later still, so prune
-                if final - 1 - best_i >= cfg.patience:
-                    stop = "patience"
-        hist.append(rec)
-        if (step - 1) % cfg.log_every == 0 or "val" in rec:
-            log({k: (round(v, 5) if isinstance(v, float) and k != "lr" else v) for k, v in rec.items()})
-        if stop == "patience":
-            break
-    assert best_i is not None, "fewer than two validations ran: cap_steps is below 2 x val_every"
-    stable_steps = step
-    length = vsteps[best_i]
-    cool = min(n_cool(length), length)
-    start = length - cool
-    start = max(k for k in snaps if k <= start)      # on the grid by construction; 0 at worst
-    cool = length - start
-
-    # Rewind and anneal so that the run ends at the chosen length. The data stream simply
-    # continues; only the weights and the optimizer go back.
-    _restore(student, opt, snaps[start], device)
-    del snaps
-    for i in range(cool):
-        s_abs = start + i
-        lr = cfg.lr * min(1.0, (s_abs + 1) / cfg.warmup) * (1.0 - (i + 1) / cool)
-        hist.append(one_step(s_abs, lr, "cooldown"))
-    cooled = validate()
-    hist[-1]["val"] = cooled
-    log({"length": length, "rewound_to": start, "cooldown_steps": cool,
-         "smoothed_best": round(smoothed(vals, best_i), 5), "val_annealed": round(cooled, 5)})
+    hist, info = select_length(
+        one_step, validate, lambda: _snapshot(student, opt), lambda sn: _restore(student, opt, sn, device),
+        cap_steps=cfg.cap_steps, lr=cfg.lr, warmup=cfg.warmup, val_every=cfg.val_every,
+        patience=cfg.patience, cooldown_frac=cfg.cooldown_frac, min_cooldown=cfg.min_cooldown,
+        log=log, log_every=cfg.log_every)
     student.eval()
     total = count["real"] + count["noise"]
-    summary = {"stop": stop, "best_step": length, "rewound_to": start, "cooldown_steps": cool,
-               "smoothed_best_val": smoothed(vals, best_i), "raw_val_at_best_step": vals[best_i],
-               "cooled_val": cooled, "selected": "annealed", "selected_val": cooled,
-               "stable_steps": stable_steps, "stable_vals": list(zip(vsteps, vals)),
-               "positions": total, "real_positions": count["real"], "noise_positions": count["noise"],
+    summary = {**info, "positions": total, "real_positions": count["real"],
+               "noise_positions": count["noise"],
                "achieved_m": (count["noise"] / count["real"]) if count["real"] else float("inf"),
-               "teacher_positions": total, "validations": count["validations"],
-               "skipped": count["skipped"], "seconds": time.time() - t0}
+               "teacher_positions": total, "skipped": count["skipped"], "seconds": time.time() - t0}
     return hist, summary

@@ -21,7 +21,7 @@ python - "$B" <<'PY' || { echo "CONFIG DRIFT, not launching" >> $LOG; exit 1; }
 import sys, yaml
 b = sys.argv[1]
 h = yaml.safe_load(open(f"experiments/phase2b/configs/heal-b{b}.yaml"))["heal"]
-want = {"cap_tokens": 200000000, "batch": 1, "warmup": 500, "val_every": 100, "patience": 10,
+want = {"cap_tokens": 200000000, "batch": 1, "warmup": 500, "val_every": 200, "patience": 5,
         "cooldown_frac": 0.1, "min_cooldown": 50, "w_kd": 0.9, "weight_decay": 0.1}
 for k, v in want.items():
     assert h[k] == v, f"heal-b{b}: heal.{k} is {h[k]}, pre-registered {v}"

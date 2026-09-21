@@ -307,5 +307,12 @@ under the old rule are kept in `cells-pod-rule-v1/` as a record of that rule and
 results of this protocol. No control cell had finished, so no comparison exists under the
 old rule to be tempted by.
 
+**The heal follows the same rule with a coarser grid**, settled before any heal ran: it
+validates every 200 steps with a patience of 5 where a stage uses 100 and 10. That is the
+same 1000 steps of patience. The reason is memory and nothing else: a rewind needs the
+window of snapshots back to where the cooldown starts, a heal's snapshot is 600M weights
+plus their Adam moments (kept in bfloat16, 4.8 GB), and three heals share one host. Both
+trainers run one implementation of the rule, `lwd.stage.select.select_length`.
+
 **What this amendment is not.** It is a change made after seeing data, and it should be
 read with that in mind. What it was shown was one arm's training curve, not an outcome.
