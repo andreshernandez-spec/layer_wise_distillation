@@ -1,8 +1,9 @@
 """Gate S2 of the data-limited protocol (docs/08): composed and healed on the same real
 data, does the treatment beat BOTH plain KD and the same pipeline without it?
 
-For each arm the learning rate is chosen on validation loss, then the held-out loss of the
-chosen rate is read, over heal seeds.
+For each arm the learning rate is chosen on the validation loss of heal seed 0, which is
+the only seed every rate is run at; the other seeds run at the chosen rate only. Then the
+held-out loss at that rate is read over all its seeds.
 
     python experiments/phase2b/gate2.py out/phase2b/heals
 """
@@ -30,7 +31,9 @@ def main(d):
         chosen = {}
         for arm in sorted({k[0] for k in runs[B]}):
             by_lr = {lr: rs for (a, lr), rs in runs[B].items() if a == arm}
-            lr = min(by_lr, key=lambda x: sum(r["val_loss"] for r in by_lr[x]) / len(by_lr[x]))
+            seed0 = {x: [r for r in rs if r["heal_seed"] == 0] for x, rs in by_lr.items()}
+            seed0 = {x: rs for x, rs in seed0.items() if rs}
+            lr = min(seed0, key=lambda x: seed0[x][0]["val_loss"])
             rs = by_lr[lr]
             h = [r["held_loss"] for r in rs]
             chosen[arm] = {"lr": lr, "vals": h, "mean": sum(h) / len(h), "rs": rs}

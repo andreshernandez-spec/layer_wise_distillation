@@ -201,7 +201,9 @@ the control and the chosen treatment, every stage selected as above; compose; he
 with the same selection rule and an lr grid {3e-5, 1e-4, 3e-4}; B0 on the same D, same
 grid, same rule; 3 heal seeds per arm; every arm of one budget on one machine, because the
 replication pass put machine-to-machine error at 0.0135 against 0.0028 seed-to-seed. About
-**$10 per budget**.
+**$10 per budget**. (Clarified 21 Sep, before any step 2 run: each arm's learning rate is
+chosen on the validation loss of heal seed 0, the only seed run at every rate, and seeds 1
+and 2 run at the chosen rate. The stacks themselves are one seed each.)
 
 *Step 3: the ends and the references.* Validation-selected multi-epoch heals for M and the
 real-activation stack at D = 1e7 on the existing checkpoints (~$6); on-policy retraining
