@@ -81,8 +81,9 @@ and barely moves afterwards (0.593 best, 0.600 final). So "+0.773" compares nois
 a model trained ten times past the point where anyone with a validation split would have
 stopped it, and part of what noise is doing in that table is standing in for early
 stopping. On eps at each arm's best checkpoint the gap is 0.040, not 0.46. What it is on
-stitching delta at the best checkpoint was not recorded. **This is a handicap in the method's favour of the same
-species as the ones in `docs/06`, and the new protocol exists partly to remove it.**
+stitching delta at the best checkpoint was not recorded. **This is a handicap in the
+method's favour of the same species as the ones in `docs/06`, and the new protocol exists
+partly to remove it.**
 
 **Composed and healed, D = 1e7.**
 
