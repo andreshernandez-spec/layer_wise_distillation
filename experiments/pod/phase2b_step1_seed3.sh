@@ -10,6 +10,9 @@ LOG=/root/step1_seed3.log
 [ -s "$LOG" ] && mv "$LOG" "$LOG.$(date -u +%Y%m%dT%H%M%SZ)"
 echo "== waiting for step 1 $(date -u +%H:%M:%S)" >> $LOG
 while ! grep -q "STEP1-DONE" /root/step1.log 2>/dev/null; do sleep 60; done
+# cells rerun beside the queue (after the cap bug of 21 Sep) must be in before validation
+# chooses anything: the strongest control is among them
+while [ -f /root/step1_rerun.log ] && ! grep -q "RERUN-DONE" /root/step1_rerun.log; do sleep 60; done
 
 python - > /root/step1_seed3.jobs <<'PY'
 import glob, json

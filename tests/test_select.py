@@ -104,3 +104,16 @@ def test_the_cf_term_enters_the_loss_only_when_asked():
     hist, _ = train_selected(student, teacher, sampler, cfg, scripted(CURVE + [0.55]),
                              cf=CFDistance(6, M=8, seed=0), log=lambda r: None)
     assert all(r["cf"] > 0 and abs(r["loss"] - (r["mse"] + 30.0 * r["cf"])) < 1e-5 for r in hist)
+
+
+def test_a_cap_that_is_off_the_validation_grid_still_finds_its_rewind_snapshot():
+    """The real cap is 6104 on a grid of 100. With the best at the cap the rewind point is
+    off the grid too, and pruning must not delete the snapshot just below it."""
+    student, teacher, sampler = parts()
+    cfg = SelectConfig(**{**CFG, "cap_steps": 64, "cooldown_frac": 0.1})
+    #             10   20   30   40   50   60   64(cap) then the annealed value
+    curve = [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25]
+    _, s = train_selected(student, teacher, sampler, cfg, scripted(curve), log=lambda r: None)
+    assert s["stop"] == "cap" and s["best_step"] == 64
+    assert s["rewound_to"] == 50 and s["cooldown_steps"] == 14        # 64 - 10 = 54 -> snapshot 50
+    assert s["selected_val"] == 0.25

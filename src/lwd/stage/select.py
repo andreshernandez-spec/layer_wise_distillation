@@ -105,9 +105,15 @@ def select_length(one_step, validate, snapshot, restore, *, cap_steps, lr, warmu
             final = len(vals) if at_cap else len(vals) - 1
             if final > 0:
                 best_i = min(range(final), key=lambda i: smoothed(vals, i))
-                need = vsteps[best_i] - n_cool(vsteps[best_i])      # where its rewind starts;
-                for k in [k for k in snaps if k < need]:            # later bests rewind from
-                    del snaps[k]                                    # later still, so prune
+                # Where its rewind starts. Later bests rewind from later still, so everything
+                # before the snapshot that rewind would USE can go. Not "everything before
+                # `need`": the cap (6104) is off the validation grid, so is its rewind point
+                # (5504), and pruning below that deleted the snapshot at 5500 it had to fall
+                # back on. The first cell to reach the cap died there after 85 minutes.
+                need = vsteps[best_i] - n_cool(vsteps[best_i])
+                use = max(k for k in snaps if k <= max(need, 0))
+                for k in [k for k in snaps if k < use]:
+                    del snaps[k]
                 if final - 1 - best_i >= patience:
                     stop = "patience"
         hist.append(rec)
