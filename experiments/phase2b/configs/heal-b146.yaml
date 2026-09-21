@@ -1,0 +1,17 @@
+# docs/08 step 2: heal on the budget of 146 rows, to the validation-selected best.
+# cap_tokens is the common compute cap: 2e8 tokens is more than the equal-FLOPs budget G2
+# gave the random arm, so no arm here can be called compute-starved.
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+harvest: out/phase2b/harvest-b146-full
+cells: out/phase2b/stacks
+heldout: out/heldout/heldout_rows.npy
+eval_rows: 32
+val_seqs_max: 32
+student_layers: 2
+student_heads: 16
+device: cuda
+dtype: float16
+heal: {cap_tokens: 200000000, batch: 1, seq_len: 2048, warmup: 500, weight_decay: 0.1, grad_clip: 1.0,
+       w_kd: 0.9, val_every: 100, patience: 10, cooldown_frac: 0.1, min_cooldown: 50, log_every: 100, amp: true}
+out: out/phase2b/heals

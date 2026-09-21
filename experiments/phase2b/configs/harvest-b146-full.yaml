@@ -1,0 +1,20 @@
+# docs/08 step 2: the same budget of 146 rows, with anchors at the input of every stage
+# and the top-k store the heal reads. Same rows, same split, same statistics as
+# harvest-b146.yaml; only what is written to disk differs.
+model: EleutherAI/pythia-1.4b
+n_stages: 6
+mode: resident
+attn: sdpa
+dtype: float16
+device: cuda
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+batch: 8
+seq_len: 2048
+anchor_seqs: 8
+ref_ifaces: [0, 1, 2, 3, 4, 5]
+topk: 64
+seed: 0
+budget_rows: 146
+val_frac: 0.1
+out: out/phase2b/harvest-b146-full
