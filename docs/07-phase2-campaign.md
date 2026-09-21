@@ -111,7 +111,7 @@ in `2>/dev/null` and one pattern was wrong.
 | image, stack | as above, `torch 2.13.0+cu130` |
 | code | rsync at SHA `89d4d04` |
 | started / deleted | 2026-08-25 09:14:15 / 13:07 UTC, **3.9 h** |
-| cost | **$4.87 as of the evening of 25 Aug** ($4.78 GPU + $0.09 disk); the last bucket lands late, so treat this as provisional and re-read on 26 Aug. Uptime x rate says $6.17. |
+| cost | **$6.24** ($6.14 GPU + $0.11 disk), final, read 21 Sep. On the evening of 25 Aug the bill said $4.87; uptime x rate said $6.17, and as with the Phase 1 pod the uptime estimate was the better guide. Project total to that date: $45.87. |
 
 Four cells, all on the intended schedule with the config asserted at launch: the
 equal-FLOPs random cell on a second heal seed (2 h 47 m), the oracle cell at seed 0 as a
