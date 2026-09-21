@@ -1,0 +1,17 @@
+# Smoke only: budgeted harvest with anchors at every stage input and a top-k store.
+model: EleutherAI/pythia-70m
+n_stages: 3
+mode: resident
+attn: sdpa
+dtype: float16
+device: cuda
+slice: out/slice/anchor_rows.npy
+decontam: out/slice/decontam.json
+batch: 8
+seq_len: 2048
+anchor_seqs: 8
+ref_ifaces: [0, 1, 2]
+topk: 64
+seed: 0
+budget_rows: 24
+out: out/phase2b-smoke/harvest-full

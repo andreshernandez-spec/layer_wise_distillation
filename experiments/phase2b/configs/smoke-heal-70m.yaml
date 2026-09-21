@@ -1,0 +1,15 @@
+# Smoke only. Same keys as the real heal config.
+model: EleutherAI/pythia-70m
+n_stages: 3
+harvest: out/phase2b-smoke/harvest-full
+cells: out/phase2b-smoke/cells-full
+heldout: out/heldout/heldout_rows.npy
+eval_rows: 4
+val_seqs_max: 32
+student_layers: 1
+student_heads: 8
+device: cuda
+dtype: float16
+heal: {cap_tokens: 204800, batch: 1, seq_len: 2048, warmup: 10, weight_decay: 0.1, grad_clip: 1.0,
+       w_kd: 0.9, val_every: 10, patience: 3, cooldown_frac: 0.1, min_cooldown: 5, log_every: 50, amp: true}
+out: out/phase2b-smoke/heals

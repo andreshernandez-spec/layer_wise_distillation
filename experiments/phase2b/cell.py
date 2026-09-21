@@ -40,6 +40,14 @@ def cell_name(budget_rows, stage, m, lam, wd, seed):
 
 def main(a):
     c = yaml.safe_load(open(a.config))
+    # step 2 trains every stage of a stack from one config: the stage, and the harvest
+    # that carries anchors for all six inputs, come from the command line
+    if a.stage is not None:
+        c["stage"] = a.stage
+    if a.harvest:
+        c["harvest"] = a.harvest
+    if a.out:
+        c["out"] = a.out
     out = Path(c["out"]); out.mkdir(parents=True, exist_ok=True)
     harvest = Path(c["harvest"])
     hmeta = json.load(open(harvest / "run.json"))
@@ -149,5 +157,8 @@ if __name__ == "__main__":
     p.add_argument("--wd", type=float, default=None, help="weight decay override")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--tag", default="")
+    p.add_argument("--stage", type=int, default=None)
+    p.add_argument("--harvest", default="")
+    p.add_argument("--out", default="")
     p.add_argument("--overwrite", action="store_true")
     main(p.parse_args())
