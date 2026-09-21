@@ -41,6 +41,12 @@ August number differs in the library as well as the machine.
   `cells-rule-v1`, trainer rewritten and tested, relaunched from zero at 18:07:38. Cost of
   the false start: about $1.35.
 
+- Provenance gap, noticed at 18:15: the pod holds an rsync of the tree without `.git`, so
+  `git rev-parse` returns nothing there and the step 1 cell records carry an empty `sha`.
+  The tree synced for the relaunch is the content of `ff1e9f8` (the amendment commit, made
+  minutes later with no further change to the trainer). `cell.py` and `heal.py` now fall
+  back to a `SHA` file written at sync time, which step 2 will carry.
+
 ## Cost
 
 *pending: read the bill the day after deletion, not at deletion (`docs/05`, `docs/07`).*

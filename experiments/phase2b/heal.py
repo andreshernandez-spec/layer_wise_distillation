@@ -87,6 +87,8 @@ def main(a):
     before = next_token_loss(model.eval(), held_ids, batch=1)
     hc = HealSelectConfig(**{**c["heal"], "lr": a.lr, "seed": a.seed})
     sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    if not sha and Path("SHA").exists():       # a pod gets an rsync of the tree, not the repo
+        sha = Path("SHA").read_text().strip()
     print(json.dumps({"heal": name, "lr": a.lr, "init": a.init, "budget": budget, "sha": sha}), flush=True)
     t0 = time.time()
     hist, summary = heal_selected(model, store, hc, lambda m: next_token_loss(m, val_ids, batch=1),

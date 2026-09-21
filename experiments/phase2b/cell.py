@@ -99,6 +99,8 @@ def main(a):
         return stitched_loss(stu, val_ids) - base_val
 
     sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    if not sha and Path("SHA").exists():       # a pod gets an rsync of the tree, not the repo
+        sha = Path("SHA").read_text().strip()
     logf = open(out / f"{name}.log", "w")
 
     def log(r):
