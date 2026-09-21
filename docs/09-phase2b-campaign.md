@@ -47,6 +47,22 @@ August number differs in the library as well as the machine.
   minutes later with no further change to the trainer). `cell.py` and `heal.py` now fall
   back to a `SHA` file written at sync time, which step 2 will carry.
 
+- 19:12 the four 49-row control cells moved ahead of the queue's order in a side runner.
+  The queue had the long cells first, so the controls would have arrived five hours later,
+  and the m = 0 path had only ever run on the 70m rehearsal.
+- 20:36 **the first cell to reach the cap died there**, after 85 minutes: the wd 1.0
+  control, which is the arm a fair comparison most depends on. The cap is 6104 steps on a
+  validation grid of 100, so with the best at the cap the rewind point is 5504, off the
+  grid, and the pruning deleted the snapshot at 5500 that the rewind had to fall back on
+  (`max()` of an empty sequence). The unit test had used a cap on the grid. Fixed in
+  `c8c2a84` with a test whose cap is not.
+- 20:39 every arm that stops on patience was unaffected, so only the cells that could still
+  reach the cap on the old code were replaced: three 488-row cells (killed, which the queue
+  logs as FAILED; those three lines are deliberate) and both wd 1.0 controls, rerun beside
+  the queue on the fix. The third-seed pass now waits for them as well, since validation
+  cannot choose the control before the strongest one exists. Waste: about 20 GPU-minutes
+  of the killed cells, plus the 85 minutes of the one that died.
+
 ## Cost
 
 *pending: read the bill the day after deletion, not at deletion (`docs/05`, `docs/07`).*
