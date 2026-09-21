@@ -1,0 +1,16 @@
+# Smoke only. Same keys as the real cell config.
+model: EleutherAI/pythia-70m
+n_stages: 3
+stage: 1
+harvest: out/phase2b-smoke/harvest
+heldout: out/heldout/heldout_rows.npy
+heldout_seqs: 8
+student_layers: 1
+student_heads: 8
+device: cuda
+dtype: float16
+cf: {M: 64, freqs: [0.5, 1.0, 1.5, 2.0], seed: 0}
+train: {cap_steps: 120, batch: 4, seq_len: 256, lr: 1.0e-3, warmup: 10, weight_decay: 0.1,
+        grad_clip: 1.0, val_every: 20, patience: 3, cooldown_frac: 0.1, min_cooldown: 5,
+        log_every: 40, amp: true}
+out: out/phase2b-smoke/cells

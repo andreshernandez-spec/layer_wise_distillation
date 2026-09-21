@@ -18,6 +18,7 @@ import numpy as np
 import torch
 import yaml
 
+from lwd.harvest.budget import split_budget
 from lwd.harvest.logits import TopKWriter
 from lwd.harvest.model import Edges, ResidentModel, StageRunner, stage_bounds
 from lwd.harvest.stats import CFSketch, Lag1, MeanCov, Quantiles, to_numpy
@@ -27,7 +28,7 @@ DT = {"float16": torch.float16, "bfloat16": torch.bfloat16, "float32": torch.flo
 
 def load_config(p):
     c = yaml.safe_load(open(p))
-    ints = ["n_stages", "batch", "seq_len", "anchor_seqs", "topk", "seed", "max_rows"]
+    ints = ["n_stages", "batch", "seq_len", "anchor_seqs", "topk", "seed", "max_rows", "budget_rows"]
     for k in ints:
         if k in c:
             assert isinstance(c[k], int), (k, c[k])
@@ -77,16 +78,31 @@ def main(cfg_path):
         rows = np.delete(rows, drop, axis=0)
         print(f"dropped {len(drop)} contaminated rows, {len(rows)} left", flush=True)
     rng = np.random.default_rng(cfg["seed"])
-    n_rows = min(len(rows), cfg.get("max_rows", len(rows)))
     S = cfg["n_stages"]
-    # each interface gets its own seeded subset of sequences as anchors
-    anchor_idx = [np.sort(rng.choice(n_rows, cfg["anchor_seqs"], replace=False)) for _ in range(S + 1)]
+    val_rows, budget = None, None
+    if cfg.get("budget_rows"):
+        # docs/08: statistics, anchors and top-k come from the training rows of the budget
+        # and from nothing else; every training row is an anchor at every interface; the
+        # validation rows are kept apart and only their activations are stored.
+        assert cfg["mode"] == "resident", "the budgeted harvest is resident-mode only"
+        rows, val_rows, budget = split_budget(rows, cfg["budget_rows"], cfg.get("val_frac", 0.1),
+                                              seq_len=cfg["seq_len"])
+        np.save(out / "train_rows.npy", rows)
+        np.save(out / "val_rows.npy", val_rows)
+        n_rows = len(rows)
+        anchor_idx = [np.arange(n_rows) for _ in range(S + 1)]
+        print(f"budget: {budget['train_rows']} training rows, {budget['val_rows']} validation rows, "
+              f"{budget['budget_tokens']:,} tokens", flush=True)
+    else:
+        n_rows = min(len(rows), cfg.get("max_rows", len(rows)))
+        # each interface gets its own seeded subset of sequences as anchors
+        anchor_idx = [np.sort(rng.choice(n_rows, cfg["anchor_seqs"], replace=False)) for _ in range(S + 1)]
     anchor_sets = [set(a.tolist()) for a in anchor_idx]
     np.save(out / "anchor_idx.npy", np.stack(anchor_idx))
     dev, dt = cfg["device"], DT[cfg["dtype"]]
     t0 = time.time()
     meta = {"config": cfg, "env": env_record(), "slice_sha256":
-            hashlib.sha256(rows.tobytes()).hexdigest(), "n_rows": n_rows}
+            hashlib.sha256(rows.tobytes()).hexdigest(), "n_rows": n_rows, "budget": budget}
 
     if cfg["mode"] == "resident":
         m = ResidentModel(cfg["model"], S, dt, cfg["attn"], dev)
@@ -120,6 +136,16 @@ def main(cfg_path):
             np.savez(out / f"stats_iface{k}.npz", **{f"{g}_{n}": v for g, dd in
                                                     stats[k].finalize().items() for n, v in dd.items()})
             print(f"stats_iface{k} written", flush=True)
+        if val_rows is not None:
+            # validation activations, after the statistics are closed so they cannot leak in
+            for k in ref_ifaces:
+                (out / "anchors_val" / f"iface{k}").mkdir(parents=True, exist_ok=True)
+            for i, ids in batches(val_rows, cfg):
+                ifaces, _ = m.forward(ids.to(dev))
+                for k in ref_ifaces:
+                    np.save(out / "anchors_val" / f"iface{k}" / f"ref_{i:06d}.npy",
+                            ifaces[k].to(torch.float16).cpu().numpy())
+            print(f"validation refs written for {len(val_rows)} rows", flush=True)
     else:
         from transformers import AutoConfig
         edges = Edges(cfg["model"], dt, dev)

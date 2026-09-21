@@ -85,6 +85,43 @@ class AnchorMix:
         return torch.cat([real, fake]), n_real
 
 
+class DoseMix:
+    """Real anchor sequences and noise at an exact long-run ratio of m noise positions per
+    real position, m = 0 included (docs/08: noise is a dose, and m = 0 is the control).
+
+    AnchorMix fixes the split inside every batch, which cannot express m = 0, and with a
+    batch of 8 cannot express anything above 7. This carries the fractional part of the
+    real count from batch to batch (error diffusion), so m = 2 is batches of 2, 3, 3 real
+    sequences, m = 8 is one real sequence in eight batches out of nine, and m = 32 is one
+    real sequence every 4.125 batches. The ratio is exact over a cycle, and the counts are
+    kept so a record can state the ratio that was achieved rather than the one requested.
+    """
+
+    def __init__(self, anchors: torch.Tensor, noise, m: float):
+        assert m >= 0, m
+        assert m == 0 or noise is not None, "a positive dose needs a noise sampler"
+        self.anchors, self.noise, self.m = anchors, noise, float(m)
+        self._carry = 0.0
+        self.real_seqs = self.noise_seqs = 0
+
+    def sample(self, b, L, g, device="cpu"):
+        self._carry += b / (1.0 + self.m)
+        n_real = min(b, int(self._carry + 1e-9))
+        self._carry -= n_real
+        parts = []
+        if n_real:
+            idx = torch.randint(0, self.anchors.shape[0], (n_real,), generator=g)
+            parts.append(self.anchors[idx, :L].to(device).float())
+        if b - n_real:
+            parts.append(self.noise.sample(b - n_real, L, g, device).float())
+        self.real_seqs += n_real
+        self.noise_seqs += b - n_real
+        return torch.cat(parts), n_real
+
+    def achieved_m(self) -> float:
+        return self.noise_seqs / self.real_seqs if self.real_seqs else float("inf")
+
+
 class LiveReal:
     """Real activations at interface k computed live from token rows: embedding plus
     the teacher blocks below the stage, so every sample is a distinct real position
