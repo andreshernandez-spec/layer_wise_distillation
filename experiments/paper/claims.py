@@ -86,6 +86,25 @@ def phase1(reg):
               f"{stem} pair{tag or ' (full anchors)'}", doc=doc, tol=2e-3)
 
 
+def scarce(reg):
+    """Prior evidence for the data-limited protocol (docs/08). The point of recording the
+    final and the best eps side by side: the anchors-only arm at 94k positions overfits
+    (final far above best) and its stitching delta was read at the FINAL step, so the
+    published "noise is worth 0.773" compares noise against a baseline nobody early-stopped."""
+    for arm in ("R_iid", "C_mix"):
+        for seed in (0, 1):
+            r = json.load(open(f"{P1}/{arm}_q1e08_s{seed}_a46.json"))
+            best = min(x["eval"] for x in r["history"] if "eval" in x)
+            claim(reg, f"scarce.{arm}.a46.s{seed}.eps_final", r["final_eval"], "a46 cell")
+            claim(reg, f"scarce.{arm}.a46.s{seed}.eps_best", best, "a46 cell")
+            claim(reg, f"scarce.{arm}.a46.s{seed}.stitch_final", r["stitch"]["delta"], "a46 cell")
+    # long training at the full anchor budget, both seeds
+    for arm in ("R_iid", "C_mix"):
+        for seed in (0, 1):
+            r = json.load(open(f"{P1}/{arm}_q3e08_s{seed}.json"))
+            claim(reg, f"long.{arm}.q3e8.s{seed}.stitch", r["stitch"]["delta"], "3e8 cell")
+
+
 def phase2(reg):
     # Both pods. A cell is identified by arm and budget; several runs of the same cell
     # differ only in heal seed and in which machine they ran on.
@@ -215,6 +234,7 @@ def phase2(reg):
 def main(a):
     reg = {}
     phase1(reg)
+    scarce(reg)
     phase2(reg)
     bad = [k for k, v in reg.items() if v["matches_doc"] is False]
     if a.json:
