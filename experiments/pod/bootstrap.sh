@@ -27,7 +27,9 @@ if [ ! -d .venv ]; then
   # match the laptop's torch so the only difference between platforms is the GPU
   pip install -q "torch==2.13.0+cu130" --index-url https://download.pytorch.org/whl/cu130
   pip install -q -e . --no-deps
-  pip install -q "transformers>=4.45" safetensors pyyaml numpy scipy requests tokenizers huggingface_hub zstandard
+  # pinned: an unpinned install gave 5.15.1 on the August pods and 5.17.0 on 21 Sep, and a
+  # comparison across pods should differ in the machine and nothing else
+  pip install -q "transformers==5.15.1" safetensors pyyaml numpy scipy requests tokenizers huggingface_hub zstandard
 else
   . .venv/bin/activate
 fi
