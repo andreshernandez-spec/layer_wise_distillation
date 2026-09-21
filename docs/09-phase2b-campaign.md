@@ -36,6 +36,11 @@ August number differs in the library as well as the machine.
   decision: it reads which control and which treatment validation chose at each budget and
   runs seed 2 for those.
 
+- 18:00 the first cell finished and showed the selection rule was flawed (`docs/08`,
+  Amendment 1). Queue stopped at 18:01, the three finished treatment cells quarantined as
+  `cells-rule-v1`, trainer rewritten and tested, relaunched from zero at 18:07:38. Cost of
+  the false start: about $1.35.
+
 ## Cost
 
 *pending: read the bill the day after deletion, not at deletion (`docs/05`, `docs/07`).*

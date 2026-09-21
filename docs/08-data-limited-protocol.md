@@ -160,16 +160,20 @@ and whether the next stage prefers that is the empirical question.
 | M+ | the chosen treatment with on-policy retraining (step 3) | does DAgger survive a D-limited heal |
 | ref | KD on D plus teacher-generated text (step 3, reference, not a gate) | the other way to turn teacher compute into data |
 
-**Selection, the same for every arm.** A cosine sized in advance cannot be used: a
-checkpoint lifted from the middle of a long cosine run is at near-peak learning rate, and
-the arm that peaks early (the control, at scarce data) would be read at its worst. So:
-warm up 100 steps to 3e-4, hold the rate, validate every 100 steps, stop after 10
-validations without a new best or at the cap of 6104 steps (1e8 positions, the source
-document's per-stage budget), then cool the best checkpoint linearly to zero over a tenth
-of its step count (at least 50 steps) and keep whichever of the two validates better.
-Stages validate on **stitching delta** over the budget's validation rows (at most 32 of
-them), not eps: Phase 1 showed eps improve while stitching degrades. Heals validate on
-next-token loss over the same rows.
+**Selection, the same for every arm** (amended 21 Sep 2026, 18:05 UTC, see the amendment
+at the end of this page). A cosine sized in advance cannot be used: a checkpoint lifted
+from the middle of a long cosine run is at near-peak learning rate, and the arm that peaks
+early (the control, at scarce data) would be read at its worst. So the length is chosen
+and then annealed to. Warm up 100 steps to 3e-4, hold the rate, validate every 100 steps,
+stop once 10 validations pass without a new best or at the cap of 6104 steps (1e8
+positions, the source document's per-stage budget). "Best" is read on the three-point
+centred mean of the validation curve, not on single validations. The model is the one
+obtained by rewinding to the checkpoint a cooldown before the chosen step (a tenth of its
+length, on the validation grid, at least 100 steps) and annealing the rate linearly to
+zero so that the run **ends at the chosen length**. The annealed model is always the one
+taken. Stages validate on **stitching delta** over the budget's validation rows (at most
+32 of them), not eps: Phase 1 showed eps improve while stitching degrades. Heals validate
+on next-token loss over the same rows.
 
 **Choosing among configurations is also selection.** There are seven treatment
 configurations against two controls. The best of each side is chosen on validation, and
@@ -267,3 +271,41 @@ partial. Either way it should not go out before step 2.
 3. **Margin 0.10 nats; budget about $50.**
 4. **No pretrained start.** Every arm starts from random weights. "Finetuning" in the
    original statement was loose wording for a data-limited setting, not a requirement.
+
+## Amendment 1: the selection rule, 21 Sep 2026 18:05 UTC
+
+Made 45 minutes into step 1, after one cell had finished and before any comparison between
+arms had been read. The original rule is in the history of this file at `7f7643c`: cool
+down *from the best checkpoint* and keep whichever of the two validated better.
+
+**What was seen.** The first cell to finish was a treatment arm, m = 8 at 49 rows
+(`out/phase2b/cells-pod-rule-v1/`). Its validation stitching delta every 100 steps read
+
+    1800: 1.22   2000: 1.23   2200: 1.28   2400: 1.76   2500: 1.20   2600: 2.36   3300: 2.53
+
+so the "best", 1.20 at step 2500, was a single dip between 1.76 and 2.36 on a curve that
+had plateaued near 1.25 by step 1800 and was by then overfitting its 44 real sequences (76
+passes over them; train loss still falling). The cooldown started there, trained further
+into the overfit regime, and validated at **2.21**. The rule fell back to the un-annealed
+snapshot.
+
+**Why that is not a detail.** Under the original rule an arm that peaks early can never be
+annealed, because a cooldown that starts at its peak only overfits it further, while an arm
+that runs to the cap always is. The arm that peaks earliest is the control. That is a
+handicap in the treatment's favour of the same species as the ones `docs/06` lists, found
+this time before it could decide anything. The dip is a second, symmetric fault: choosing
+single validations that move by a nat between neighbours selects noise.
+
+**The amended rule** is the paragraph above: smoothed curve, rewound cooldown that ends at
+the chosen length, always the annealed model. It is what a schedule sized for each arm's
+own best length would have produced. It helps early-peaking arms most, so if it moves the
+result it moves it toward the control.
+
+**What it cost.** The queue was stopped and restarted from zero at 18:07 UTC: 45 minutes
+of pod time and six idle minutes, about $1.35. The three treatment cells that had finished
+under the old rule are kept in `cells-pod-rule-v1/` as a record of that rule and are not
+results of this protocol. No control cell had finished, so no comparison exists under the
+old rule to be tempted by.
+
+**What this amendment is not.** It is a change made after seeing data, and it should be
+read with that in mind. What it was shown was one arm's training curve, not an outcome.
