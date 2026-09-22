@@ -33,11 +33,14 @@ def table(cells):
     for B in sorted({k[0] for k in cells}):
         rows = {k[1:]: v for k, v in cells.items() if k[0] == B}
         tok = next(iter(rows.values()))[0]["budget"]["budget_tokens"]
-        ctrl = [v for k, v in rows.items() if k[0] == 0 and k[1] == 0]
-        ctrl_flops = min(mean(r["flops"]["total"] for r in v) for v in ctrl) if ctrl else float("nan")
+        # FLOPs relative to the control validation chose (the one with the lowest mean
+        # validation delta among m = 0, lambda = 0), which is what the gate compares against
+        ctrl = {k: v for k, v in rows.items() if k[0] == 0 and k[1] == 0}
+        ck = min(ctrl, key=lambda k: mean(r["val_stitch_delta"] for r in ctrl[k])) if ctrl else None
+        ctrl_flops = mean(r["flops"]["total"] for r in ctrl[ck]) if ck else float("nan")
         out.append(f"\n**Budget {B} rows ({tok:,} real tokens).** Held-out stitching delta, nats.\n")
-        out.append("| m | lambda | wd | seeds | held-out | range | chosen step | stopped | noise pos / real token "
-                   "| passes over D | FLOPs x control | dispersion |")
+        out.append(f"| m | lambda | wd | seeds | held-out | range | chosen step | stopped | noise pos / real token "
+                   f"| passes over D | FLOPs x chosen control{' (wd %g)' % ck[2] if ck else ''} | dispersion |")
         out.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
         for key in sorted(rows):
             rs = rows[key]
@@ -70,6 +73,16 @@ def figure(cells, path):
             ax.plot(xs, [mean(p[1]) for p in pts], marker="o", ms=4, lw=1.5, color=col, label=lab)
             for x, p in zip(xs, pts):
                 ax.plot([x] * len(p[1]), p[1], ls="none", marker="_", ms=9, color=col, alpha=0.6)
+        # The control the gate compares against is the one validation chose, and at both
+        # budgets that was weight decay 1.0, not the 0.1 the treatment arms use. Drawing only
+        # the wd 0.1 control at m = 0 made noise look worth twice what the gate says.
+        ctrl = rows.get((0.0, 0.0, 1.0))
+        if ctrl:
+            vals = [r["held_stitch_delta"] for r in ctrl]
+            ax.axhline(mean(vals), color="#1a1a1a", lw=1.2, ls="--")
+            ax.plot([0.5] * len(vals), vals, ls="none", marker="_", ms=9, color="#1a1a1a", alpha=0.7)
+            ax.plot([0.5], [mean(vals)], marker="s", ms=5, color="#1a1a1a", ls="none",
+                    label="control, wd 1.0 (chosen on validation)")
         ax.set_xscale("log", base=2)
         ax.set_xticks([0.5, 2, 8, 32]); ax.set_xticklabels(["0\n(control)", "2", "8", "32"])
         ax.set_xlabel("noise positions per real position, m")

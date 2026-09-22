@@ -63,6 +63,14 @@ August number differs in the library as well as the machine.
   cannot choose the control before the strongest one exists. Waste: about 20 GPU-minutes
   of the killed cells, plus the 85 minutes of the one that died.
 
+- 02:00 the 36-cell queue finished (ok=29, plus the 3 deliberate kills, plus 4 cells the
+  side runners had already produced); 02:58 the third-seed pass finished. 40 cells total.
+- 03:07 gate S1 read (fails at both budgets, `docs/08`), logs and harvest records pulled,
+  pod deleted. Nine idle minutes between the last cell and deletion.
+
 ## Cost
 
-*pending: read the bill the day after deletion, not at deletion (`docs/05`, `docs/07`).*
+Uptime 17:12:31 to 03:07 UTC, **9.9 h**, about **$15.75** at $1.59/h plus 16 seconds of the
+first pod. Against the $16 estimate for step 1. *Provisional: read the bill the day after
+deletion, not at deletion (`docs/05`, `docs/07`).* The two false starts inside it cost about
+$1.35 (the selection rule) and about $1 (the cap bug).

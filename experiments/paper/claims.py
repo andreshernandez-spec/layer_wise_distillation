@@ -120,6 +120,41 @@ def cf_probe(reg):
         claim(reg, f"cfprobe.{label}.lambda_at_parity", r["rel_mse"] / r["cf"], str(f))
 
 
+P2B = "out/phase2b/cells-pod"
+
+
+def step1(reg):
+    """docs/08 step 1: gate S1, both budgets, as gate.py computes it."""
+    from collections import defaultdict
+    cells = defaultdict(list)
+    for f in sorted(glob.glob(f"{P2B}/*.json")):
+        r = json.load(open(f))
+        cells[(r["budget"]["budget_rows"], r["m"], r["cf_lambda"], r["weight_decay"])].append(r)
+    if not cells:
+        return
+    for B, (tm, tc, tw), doc_gap in ((49, (8.0, 0.0, 0.1), 0.137), (488, (2.0, 0.0, 0.1), 0.036)):
+        ctrl = cells[(B, 0.0, 0.0, 1.0)]
+        treat = cells[(B, tm, tc, tw)]
+        weak = cells[(B, 0.0, 0.0, 0.1)]
+        c = [r["held_stitch_delta"] for r in ctrl]; t = [r["held_stitch_delta"] for r in treat]
+        w = [r["held_stitch_delta"] for r in weak]
+        claim(reg, f"s1.b{B}.control_wd1.mean", float(np.mean(c)), f"{P2B} n={len(c)}")
+        claim(reg, f"s1.b{B}.control_wd1.n", float(len(c)), P2B)
+        claim(reg, f"s1.b{B}.control_wd0.1.mean", float(np.mean(w)), f"{P2B} n={len(w)}")
+        claim(reg, f"s1.b{B}.treatment.mean", float(np.mean(t)), f"{P2B} m={tm:g} n={len(t)}")
+        claim(reg, f"s1.b{B}.gap", float(np.mean(c) - np.mean(t)), "derived", doc=doc_gap, tol=2e-3)
+        claim(reg, f"s1.b{B}.ranges_overlap", float(max(t) >= min(c)), "derived")
+        claim(reg, f"s1.b{B}.weight_decay_worth", float(np.mean(w) - np.mean(c)), "wd 0.1 -> 1.0 on the control")
+        cf3 = cells[(B, 8.0, 3.0, 0.1)]
+        m8 = cells[(B, 8.0, 0.0, 0.1)]
+        claim(reg, f"s1.b{B}.cf3_cost_at_m8",
+              float(np.mean([r["held_stitch_delta"] for r in cf3]) - np.mean([r["held_stitch_delta"] for r in m8])),
+              "CF lambda 3 minus no CF, both m = 8")
+        claim(reg, f"s1.b{B}.treatment_flops_x_control",
+              float(np.mean([r["flops"]["total"] for r in treat]) / np.mean([r["flops"]["total"] for r in ctrl])),
+              "derived")
+
+
 def phase2(reg):
     # Both pods. A cell is identified by arm and budget; several runs of the same cell
     # differ only in heal seed and in which machine they ran on.
@@ -251,6 +286,7 @@ def main(a):
     phase1(reg)
     scarce(reg)
     cf_probe(reg)
+    step1(reg)
     phase2(reg)
     bad = [k for k, v in reg.items() if v["matches_doc"] is False]
     if a.json:
