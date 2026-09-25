@@ -70,7 +70,8 @@ August number differs in the library as well as the machine.
 
 ## Cost
 
-Uptime 17:12:31 to 03:07 UTC, **9.9 h**, about **$15.75** at $1.59/h plus 16 seconds of the
-first pod. Against the $16 estimate for step 1. *Provisional: read the bill the day after
-deletion, not at deletion (`docs/05`, `docs/07`).* The two false starts inside it cost about
-$1.35 (the selection rule) and about $1 (the cap bug).
+Uptime 17:12:31 to 03:07 UTC, **9.9 h**. Bill **$15.88** ($15.72 GPU + $0.16 disk), final,
+read 25 Sep from `list-pod-billing` for pod `vm499pfn1f5b8w` (two day buckets, $10.87 and
+$5.01). Uptime x rate said $15.75, against the $16 estimate for step 1. The two false
+starts inside it cost about $1.35 (the selection rule) and about $1 (the cap bug). Project
+total across the four pods: $20.31 + $19.32 + $6.24 + $15.88 = **$61.75**.
